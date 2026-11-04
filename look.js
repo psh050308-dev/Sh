@@ -105,7 +105,7 @@
     if ((r === 4 && d <= 3) || (r === 5 && d >= 1 && d <= 4) || (r >= 3 && r <= 8 && d === 0)) return 5;   // 흰 무늬
     return 3;
   }
-  // 로브: 검은 겉옷(앞섶·소매 안쪽 파란 안감) 안에 단색 브이넥 조끼(파랑·흰색·파랑 테두리, 밑단 파랑·흰색),
+  // 로브: 검은 겉옷(앞섶·소매 안쪽 파란 안감) 안에 단색 브이넥 조끼(흰색·파랑·흰색 테두리, 밑단 흰색·파랑),
   //       흰 셔츠 깃, 대각선 줄무늬 넥타이, 주름 치마, 왼쪽 가슴 배지
   const ROBE = { name: '로브', dform: 3,
     dpal: ['#17181d', '#2a2d36', '#2f56a6', '#737a88', '#fffdf6', '#b9c1cf', '#1f3270', '#d6dae2', '#555c6a', '#3b4f8f', '#0f1014', '#8b93a3', '#8a5a35', '#c9a77c', '#9a9a9a'],
@@ -129,19 +129,19 @@
         if (y < 6 && c <= 22) return 3;                        // 어깨에 걸친 후드 안감
         return badge(x, y) || 1;
       }
-      const vHalf = 14.4 - y * .55;                            // 브이넥
-      if (y < 27 && c < vHalf) {
+      const vHalf = 14.4 - y * .8;                             // 브이넥 (18번째 줄쯤에서 끝나요)
+      if (y < 19 && c < vHalf) {
         if (c < 2.6 && y >= 2) return y < 6 ? 7 : ((x + y) % 6 < 3 ? 6 : 7);   // 넥타이: 매듭 + 대각선 줄무늬
         if (y < 8 && c > vHalf - 6) return y >= 6 ? 12 : 5;    // 셔츠 깃
         return 5;
       }
-      if (y < 33) { const t = c - vHalf; if (t < 2) return 3; if (t < 4) return 5; if (t < 6) return 3; }   // 브이넥 테두리
-      if (y === 44 || y === 45) return 3;                      // 조끼 밑단: 파랑 · 흰색
-      if (y === 46 || y === 47) return 5;
+      if (y < 26) { const t = c - vHalf; if (t < 2) return 5; if (t < 4) return 3; if (t < 6) return 5; }   // 브이넥 테두리: 흰색 · 파랑 · 흰색
+      if (y === 44 || y === 45) return 5;                      // 조끼 밑단: 흰색 · 파랑
+      if (y === 46 || y === 47) return 3;
       if (y < 44) return 4;                                    // 조끼 (단색)
       return x % 8 === 0 ? 11 : 2;                             // 주름 치마
     }) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-4', ...ROBE }] };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', ...ROBE }] };
   window.AZIT_LOOK = { FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();
