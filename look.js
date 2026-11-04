@@ -84,6 +84,16 @@
     return out.map(v => v.toString(16)).join('');
   }
   // 로브: 검은 겉옷(앞섶·소매 안쪽 파란 안감) 안에 브이넥 니트 조끼, 흰 셔츠 깃, 대각선 줄무늬 넥타이, 주름 치마
+  // 방패 모양 배지: 은색 테두리, 파란 바탕, 가운데 흰 무늬 (x 1~5, y 7~13)
+  function badge(x, y) {
+    const W = [5, 5, 5, 5, 5, 3, 1], r = y - 7;
+    if (r < 0 || r >= W.length) return 0;
+    const w = W[r], x0 = 3 - (w - 1) / 2;
+    if (x < x0 || x > x0 + w - 1) return 0;
+    if (r === 0 || r === W.length - 1 || x === x0 || x === x0 + w - 1 || (r === W.length - 2)) return 8;
+    if ((x === 3 && r === 2) || (r === 3 && x !== 3)) return 5;
+    return 3;
+  }
   const ROBE = { name: '로브', dform: 3,
     dpal: ['#17181d', '#2a2d36', '#2f56a6', '#737a88', '#fffdf6', '#b9c1cf', '#1f3270', '#d6dae2', '#555c6a', '#3b4f8f', '#0f1014', '#8b93a3', '#8a5a35', '#c9a77c', '#9a9a9a'],
     dsg: paintParts((p, x, y, n) => {
@@ -104,7 +114,7 @@
       if (c > 7.5) {                                           // 로브 겉감
         if (c <= 9) return 3;                                  // 앞섶 파란 안감
         if (y < 3 && c <= 11) return 3;                        // 어깨에 걸친 후드 안감
-        if (x >= 3 && x <= 6 && y >= 8 && y <= 11) return (x === 4 || x === 5) && (y === 9 || y === 10) ? 8 : 3;   // 가슴 문장
+        const b = badge(x, y); if (b) return b;                // 가슴 배지
         return 1;
       }
       const vHalf = 7.2 - y * .6;                              // 브이넥: 위가 넓고 아래로 좁아져요
@@ -113,13 +123,17 @@
         if (y < 4 && c > vHalf - 3) return y === 3 ? 12 : 5;   // 셔츠 깃
         return 5;
       }
-      if (y < 14 && c < vHalf + 1.4) return 9;                 // 브이넥 골지
-      if (y >= 22 && y <= 23) return 9;                        // 조끼 밑단 골지
-      if (y < 22) return (y % 4 === 1 && Math.round(c) % 3 === 0) || ((y + Math.round(c)) % 4 === 0 && y % 2) ? 12 : 4;   // 니트 꽈배기
+      if (y < 16) {                                            // 브이넥 테두리: 파랑 · 흰색 · 파랑
+        const t = c - vHalf;
+        if (t < 1) return 3; if (t < 2) return 5; if (t < 3) return 3;
+      }
+      if (y === 22) return 3;                                  // 조끼 밑단: 파랑 · 흰색
+      if (y === 23) return 5;
+      if (y < 22) return 4;                                    // 조끼 (단색)
       return (x % 4 === 0) ? 11 : 2;                           // 주름 치마
     }) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-2', ...ROBE }] };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-3', ...ROBE }] };
   // 부드럽게: 칸 계단을 다듬는 2배 확대(EPX)를 3번 → 8배 크기 캔버스
   function epx(g, n) {
     const o = new Array(n * n * 4), at = (x, y) => g[Math.min(n - 1, Math.max(0, y)) * n + Math.min(n - 1, Math.max(0, x))], m = n * 2;
