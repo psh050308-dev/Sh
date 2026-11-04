@@ -14,6 +14,8 @@
   const EYES = ['기본', '동글', '속눈썹', '졸린 눈', '웃는 눈', '감은 눈', '반짝', '점 눈', '작은 눈동자', '옆 보기', '윙크', '진한 눈썹', '화장 눈', '길쭉 눈', '무심한 눈', '초롱 눈'];
   const TOPS = ['티셔츠', '후드티', '셔츠', '줄무늬', '멜빵', '니트', '체크', '하트 맨투맨', '조끼', '넥타이', '나시', '내 디자인'];
   const DESIGN_TOP = TOPS.length - 1;
+  // 내 디자인 옷 형태
+  const FORMS = ['반팔 셔츠', '맨투맨', '원피스', '로브', '민소매'];
   // 내 디자인: 칸마다 0(비어 있음 = 윗옷 색) 또는 물감 1~15번. dsg는 칸을 16진수 한 글자씩 이은 문자열
   // 순서: 앞(32×32) · 뒤(32×32) · 왼소매(16×16) · 오른소매(16×16) = 2560칸. 예전 1024칸(앞만)도 읽어요
   const DN = 32;
@@ -34,6 +36,7 @@
   function cleanLook(l) {
     const o = {};
     o.dsg = cleanDsg(l && l.dsg);
+    o.dform = l && Number.isInteger(l.dform) && l.dform >= 0 && l.dform < FORMS.length ? l.dform : 1;
     o.dpal = l && Array.isArray(l.dpal) && l.dpal.length === DPAL.length && l.dpal.every(c => typeof c === 'string' && HEX.test(c.toLowerCase()))
       ? l.dpal.map(c => c.toLowerCase()) : DPAL.slice();
     for (const k in LIMIT) {
@@ -80,35 +83,43 @@
     for (const p in PARTS) { const [off, n] = PARTS[p]; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) out[off + y * n + x] = f(p, x, y, n) || 0; }
     return out.map(v => v.toString(16)).join('');
   }
-  // 로브: 검은 겉옷 + 파란 안감, 회색 조끼, 흰 셔츠 깃, 줄무늬 넥타이
-  const ROBE = { name: '로브', dpal: ['#1b1c22', '#2c2f39', '#2f56a6', '#6f7684', '#fffdf6', '#a9b2c2', '#1f3270', '#c9ced8', '#3a3f4c', '#4b5aa0', '#2b2b2b', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a'],
+  // 로브: 검은 겉옷(앞섶·소매 안쪽 파란 안감) 안에 브이넥 니트 조끼, 흰 셔츠 깃, 대각선 줄무늬 넥타이, 주름 치마
+  const ROBE = { name: '로브', dform: 3,
+    dpal: ['#17181d', '#2a2d36', '#2f56a6', '#737a88', '#fffdf6', '#b9c1cf', '#1f3270', '#d6dae2', '#555c6a', '#3b4f8f', '#0f1014', '#8b93a3', '#8a5a35', '#c9a77c', '#9a9a9a'],
     dsg: paintParts((p, x, y, n) => {
-      if (p === 'left' || p === 'right') {
-        if (y >= 11 && y <= 13) return 3;                      // 파란 소매 안감
-        return (x === 0 || x === n - 1) ? 2 : 1;
+      const c = Math.abs(x - (n - 1) / 2);
+      if (p === 'left' || p === 'right') {                    // 나팔 소매: 끝 4줄은 파란 안감이 보여요
+        if (y >= 12) return y === 12 ? 10 : 3;
+        return c > 6.5 ? 11 : 1;
       }
       if (p === 'back') {
-        const hood = y < 10 && Math.abs(x - 15.5) < 9 - y * .35;
-        if (hood) return (y === 9 || Math.abs(x - 15.5) > 7.6 - y * .35) ? 3 : 2;
-        if (x === 15 || x === 16) return y > 12 ? 2 : 1;      // 뒤 트임
+        if (y < 11) {                                          // 후드
+          const hw = 10.5 - y * .55;
+          if (c < hw) return (y === 10 || c > hw - 1.3) ? 3 : (y < 3 ? 2 : 11);
+        }
+        if (c < .6 && y > 14) return 11;                       // 뒤 트임
         return 1;
       }
       // 앞
-      const c = Math.abs(x - 15.5);
-      if (c > 5.5) {                                           // 겉옷
-        if (c < 7) return 3;                                   // 앞 여밈 파란 안감
-        if (y < 3 && c < 9) return 3;                          // 후드 안감
-        if (y >= 9 && y <= 11 && x >= 4 && x <= 6) return y === 10 && x === 5 ? 8 : 3;   // 가슴 문장
+      if (c > 7.5) {                                           // 로브 겉감
+        if (c <= 9) return 3;                                  // 앞섶 파란 안감
+        if (y < 3 && c <= 11) return 3;                        // 어깨에 걸친 후드 안감
+        if (x >= 3 && x <= 6 && y >= 8 && y <= 11) return (x === 4 || x === 5) && (y === 9 || y === 10) ? 8 : 3;   // 가슴 문장
         return 1;
       }
-      if (y < 7 && c > 5.5 - (7 - y) * .8) return 5;          // 셔츠 깃
-      if (c < 1) { if (y >= 1 && y <= 21) return Math.floor((y - 1) / 2) % 2 ? 6 : 7; }  // 넥타이
-      if (y < 7) return 5;
-      if (y < 24) return (y + x) % 6 === 0 ? 9 : 4;           // 니트 조끼
-      return 2;
+      const vHalf = 7.2 - y * .6;                              // 브이넥: 위가 넓고 아래로 좁아져요
+      if (y < 13 && c < vHalf) {
+        if (c < 1.4 && y >= 1) return y < 3 ? 7 : ((x + y) % 3 === 0 ? 6 : 7);   // 넥타이 (매듭 + 대각선 줄무늬)
+        if (y < 4 && c > vHalf - 3) return y === 3 ? 12 : 5;   // 셔츠 깃
+        return 5;
+      }
+      if (y < 14 && c < vHalf + 1.4) return 9;                 // 브이넥 골지
+      if (y >= 22 && y <= 23) return 9;                        // 조끼 밑단 골지
+      if (y < 22) return (y % 4 === 1 && Math.round(c) % 3 === 0) || ((y + Math.round(c)) % 4 === 0 && y % 2) ? 12 : 4;   // 니트 꽈배기
+      return (x % 4 === 0) ? 11 : 2;                           // 주름 치마
     }) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe', ...ROBE }] };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-2', ...ROBE }] };
   // 부드럽게: 칸 계단을 다듬는 2배 확대(EPX)를 3번 → 8배 크기 캔버스
   function epx(g, n) {
     const o = new Array(n * n * 4), at = (x, y) => g[Math.min(n - 1, Math.max(0, y)) * n + Math.min(n - 1, Math.max(0, x))], m = n * 2;
@@ -136,5 +147,5 @@
     scache.set(key, c);
     return c;
   }
-  window.AZIT_LOOK = { designSmooth, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
+  window.AZIT_LOOK = { FORMS, designSmooth, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();

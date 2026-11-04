@@ -783,6 +783,18 @@ function patMat(kind, hex) {
   }, kind === 'knit' ? 3 : 2, kind === 'knit' ? 1 : 2);
   return patMats[k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .9 });
 }
+// 내 디자인 형태별 겉감·소매 (반팔 셔츠 / 맨투맨 / 원피스 / 로브 / 민소매)
+const lathe = (pts, seg) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+const FORM3D = (() => {
+  const sleeveShort = lathe([[0, -.1], [.094, -.1], [.09, -.06], [.082, -.01], [.06, .04], [0, .07]], 20);
+  const sleeveLong = lathe([[0, -.24], [.08, -.24], [.087, -.215], [.088, -.15], [.085, -.09], [.08, -.03], [.07, .02], [.045, .055], [0, .07]], 20);
+  const sleeveBell = lathe([[0, -.26], [.145, -.26], [.125, -.19], [.105, -.12], [.09, -.05], [.076, .01], [.05, .05], [0, .07]], 22);
+  const body = lathe([[0, -.36], [.335, -.36], [.33, -.3], [.31, -.18], [.3, -.06], [.3, .06], [.29, .17], [.25, .27], [.17, .35], [0, .38]], 36);
+  const sweat = lathe([[0, -.35], [.295, -.35], [.31, -.31], [.315, -.2], [.305, -.07], [.3, .06], [.29, .17], [.25, .27], [.17, .35], [0, .38]], 36);
+  const dress = lathe([[0, -.47], [.43, -.47], [.4, -.37], [.36, -.26], [.32, -.15], [.3, -.04], [.3, .07], [.29, .18], [.24, .28], [.16, .35], [0, .38]], 40);
+  const robe = lathe([[0, -.56], [.46, -.56], [.43, -.44], [.4, -.32], [.37, -.2], [.34, -.08], [.33, .04], [.32, .15], [.27, .26], [.19, .34], [0, .39]], 40);
+  return [{ body, sleeve: sleeveShort }, { body: sweat, sleeve: sleeveLong }, { body: dress, sleeve: sleeveShort }, { body: robe, sleeve: sleeveBell }, { body, sleeve: null }];
+})();
 const stripeMats = {};
 function stripeMat(hex) {
   if (stripeMats[hex]) return stripeMats[hex];
@@ -828,7 +840,9 @@ function makeVillager(look) {
     const mat = { skin: M(colorOf(l, 'skin'), { roughness: .7 }), shirt: M(sh), pants: M(pa) };
     for (const k in part) part[k].forEach(m => { m.material = mat[k]; });
     shirtM.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
-    sleeveMeshes.forEach(m => { m.visible = l.top !== 10; });
+    const isD = l.top === DESIGN_TOP && !!l.dsg, form = isD ? FORM3D[l.dform] : null;
+    shirtM.geometry = form ? form.body : VG.shirt;
+    sleeveMeshes.forEach(m => { m.geometry = form ? (form.sleeve || VG.sleeve) : VG.sleeve; m.visible = form ? !!form.sleeve : l.top !== 10; });
     legMeshes.forEach(m => m.scale.set(l.bottom === 0 ? 1.2 : 1, 1, l.bottom === 0 ? 1.2 : 1));
     sleeveMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
@@ -838,8 +852,9 @@ function makeVillager(look) {
     hairG.clear(); accG.clear(); outfitG.clear();
     buildEyes(eyesG, l.eye, mat.skin);
     // 아래옷
-    if (l.bottom === 2) { const sk = at(new THREE.Mesh(VG.skirt, M(pa, { side: THREE.DoubleSide })), 0, .36, 0, outfitG); sk.scale.z = .92; }
-    if (l.bottom === 3) { const sk = at(new THREE.Mesh(VG.longSkirt, M(pa, { side: THREE.DoubleSide })), 0, .29, 0, outfitG); sk.scale.z = .92; }
+    const longTop = isD && (l.dform === 2 || l.dform === 3);   // 원피스·로브는 아래옷을 덮어요
+    if (l.bottom === 2 && !longTop) { const sk = at(new THREE.Mesh(VG.skirt, M(pa, { side: THREE.DoubleSide })), 0, .36, 0, outfitG); sk.scale.z = .92; }
+    if (l.bottom === 3 && !longTop) { const sk = at(new THREE.Mesh(VG.longSkirt, M(pa, { side: THREE.DoubleSide })), 0, .29, 0, outfitG); sk.scale.z = .92; }
     const front = (geo, m, x, y, z = .247) => at(new THREE.Mesh(geo, m), x, y, z, outfitG);
     if (l.top === 5) at(new THREE.Mesh(VG.collar, M(shade(sh, -.15))), 0, 1.0, 0, outfitG).rotation.x = Math.PI / 2;
     if (l.top === 7) front(VG.heart, M(lum(sh) < .55 ? '#fffdf6' : '#d9383a'), 0, .7, .25);
