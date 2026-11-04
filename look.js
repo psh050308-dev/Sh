@@ -16,10 +16,10 @@
   const DESIGN_TOP = TOPS.length - 1;
   // 내 디자인 옷 형태
   const FORMS = ['반팔 셔츠', '맨투맨', '원피스', '로브', '민소매', '긴팔 원피스'];
-  // 내 모자: 몸통(32×32, 머리를 빙 둘러요) · 챙/접단(32×32)
+  // 내 모자: 앞(32×32, 앞 반 바퀴) · 뒤(32×32, 뒤 반 바퀴) · 챙/접단(32×32). 예전 2048칸(몸통 하나)은 앞뒤에 똑같이 넣어 읽어요
   const HFORMS = ['캡모자', '비니', '버킷햇'];
-  const HPARTS = { crown: [0, 32], brim: [1024, 32] };
-  const HLEN = 2048;
+  const HPARTS = { hfront: [0, 32], hback: [1024, 32], brim: [2048, 32] };
+  const HLEN = 3072;
   const HPAL = ['#f3ead6', '#2b2b2b', '#d9383a', '#f4bd4f', '#2f56a6', '#7cc79a', '#fffdf6', '#57779a', '#f0dc8a', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a', '#f28b82', '#3f9a68'];
   // 내 디자인: 칸마다 0(비어 있음 = 윗옷 색) 또는 물감 1~15번. dsg는 칸을 16진수 한 글자씩 이은 문자열
   // 순서: 앞(64×64) · 뒤(64×64) · 왼소매(32×32) · 오른소매(32×32) = 10240칸
@@ -50,7 +50,7 @@
     }
     return out.join('');
   }
-  const cleanHdsg = d => typeof d === 'string' && d.length === HLEN && DSG.test(d) ? d : '';
+  const cleanHdsg = d => typeof d !== 'string' || !DSG.test(d) ? '' : d.length === HLEN ? d : d.length === 2048 ? d.slice(0, 1024) + d.slice(0, 1024) + d.slice(1024) : '';
   const cleanPal = (p, def) => Array.isArray(p) && p.length === def.length && p.every(c => typeof c === 'string' && HEX.test(c.toLowerCase())) ? p.map(c => c.toLowerCase()) : def.slice();
   const cleanDsg = d => typeof d === 'string' && DSG.test(d) ? (d.length === DLEN ? d : d.length === 1024 || d.length === 2560 ? upscale(d) : '') : '';
   function cleanLook(l) {
@@ -205,21 +205,27 @@
       if (Math.abs(x - (18 + y * .62)) < 2.6 || Math.abs(x - (45 - y * .62)) < 2.6) return 4;
       return shirt(x, y);
     }) };
-  // 별 캡모자: 크림 앞판에 노란 별, 데님 뒤판, 노랑 줄무늬 챙
+  // 별 캡모자: 앞은 넓은 크림 앞판에 작은 노란 별과 정수리 단추(옆은 데님), 뒤는 데님에 뒷면 조절 끈, 챙은 노랑·크림 줄무늬
   const STAR_CAP = { name: '별 캡모자', kind: 'hat', hform: 0,
-    hpal: ['#f3ead6', '#5d7ea2', '#4a6788', '#f4cf5a', '#d9b44a', '#f0dc8a', '#fbf3d0', '#e4d9bf', '#2b2b2b', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a', '#f28b82', '#3f9a68'],
+    hpal: ['#f3ece0', '#5f80a3', '#4b6a8c', '#f4cf5a', '#d9b44a', '#f0dc8a', '#fbf3d0', '#e2d6bf', '#3d5673', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a', '#f28b82', '#3f9a68'],
     hdsg: paintParts((p, x, y, n) => {
-      if (p === 'brim') return Math.floor(x / 2) % 2 ? 6 : 7;              // 챙: 노랑·크림 세로 줄무늬
-      const front = x >= 7 && x <= 24;
-      if (front) {
-        if (x === 7 || x === 24) return 8;                                 // 앞판 이음선
-        if (inStar(x, y, 16, 15, 9, 2)) return y > 17 ? 5 : 4;              // 노란 별
+      const denim = (xx, yy) => (xx * 3 + yy * 7) % 19 === 0 ? 3 : 2;
+      if (p === 'brim') return Math.floor(x / 2) % 2 ? 6 : 7;              // 챙: 노랑·크림 줄무늬
+      if (p === 'hfront') {
+        if (y < 2 && x >= 14 && x <= 17) return 9;                          // 정수리 단추
+        if (x < 5 || x > 26) return denim(x, y);                           // 옆판 데님
+        if (x === 5 || x === 26) return 8;                                 // 이음선
+        if (inStar(x, y, 16, 18, 7.5, 2)) return y > 21 ? 5 : 4;           // 작은 노란 별
         return 1;
       }
-      if (y < 2 && (x === 0 || x === 31)) return 3;
-      return (x * 3 + y * 7) % 19 === 0 ? 3 : 2;                           // 데님 뒤판
+      // 뒤
+      if (y < 2 && x >= 14 && x <= 17) return 9;
+      if (x === 15 || x === 16) { if (y < 21) return 3; }                  // 가운데 이음선
+      if (y >= 22 && y <= 24 && x >= 9 && x <= 22) return x === 21 ? 9 : 6;  // 조절 끈
+      if (y >= 25 && x >= 12 && x <= 19) return 9;                         // 뒤 트임
+      return denim(x, y);
     }, HPARTS, HLEN) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress', ...STAR_DRESS }, { id: 'gift-stargazer-cap-2', ...STAR_CAP }] };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress', ...STAR_DRESS }, { id: 'gift-stargazer-cap-3', ...STAR_CAP }] };
   window.AZIT_LOOK = { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();

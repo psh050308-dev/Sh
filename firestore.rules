@@ -73,7 +73,7 @@ service cloud.firestore {
         && code.matches('WD-[A-Z0-9]{4}-[A-Z0-9]{4}')
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.keys().hasOnly(['name', 'kind', 'dsg', 'dpal', 'dform', 'owner', 'ownerName', 'at'])
-        && request.resource.data.dsg is string && (request.resource.data.dsg.size() == 10240 || request.resource.data.dsg.size() == 2048)
+        && request.resource.data.dsg is string && (request.resource.data.dsg.size() == 10240 || request.resource.data.dsg.size() == 3072)
         && request.resource.data.dpal is list && request.resource.data.dpal.size() == 15
         && request.resource.data.name is string && request.resource.data.name.size() <= 16;
       allow update: if false;

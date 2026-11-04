@@ -857,6 +857,14 @@ function uvByHeight(geo) {
   }
   return geo;
 }
+// 모자 앞·뒤 반쪽: 가로(u)는 왼쪽→오른쪽 반 바퀴, 세로(v)는 높이. 앞은 앞에서, 뒤는 뒤에서 본 그대로예요
+function crownHalves(pts) {
+  const half = start => { const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20, start, Math.PI), pos = g.attributes.position, uv = g.attributes.uv;
+    let y0 = Infinity, y1 = -Infinity; for (let i = 0; i < pos.count; i++) { y0 = Math.min(y0, pos.getY(i)); y1 = Math.max(y1, pos.getY(i)); }
+    for (let i = 0; i < pos.count; i++) uv.setY(i, (pos.getY(i) - y0) / (y1 - y0 || 1));
+    return g; };
+  return { front: half(-Math.PI / 2), back: half(Math.PI / 2) };
+}
 const visorGeo = (() => {
   const sh = new THREE.Shape(); sh.moveTo(-.34, 0); sh.quadraticCurveTo(-.3, .3, 0, .33); sh.quadraticCurveTo(.3, .3, .34, 0); sh.closePath();
   const g = new THREE.ShapeGeometry(sh, 16), p = g.attributes.position, uv = g.attributes.uv;
@@ -864,10 +872,10 @@ const visorGeo = (() => {
   return g;
 })();
 const HAT3D = [
-  { crown: uvByHeight(lathe([[.505, .02], [.512, .12], [.492, .24], [.435, .35], [.335, .44], [.19, .5], [0, .52]], 40)), visor: visorGeo },
-  { crown: uvByHeight(lathe([[.505, .0], [.522, .14], [.5, .28], [.43, .4], [.31, .49], [.16, .55], [0, .57]], 40)),
+  { crown: crownHalves([[.505, .02], [.512, .12], [.492, .24], [.435, .35], [.335, .44], [.19, .5], [0, .52]]), visor: visorGeo },
+  { crown: crownHalves([[.505, .0], [.522, .14], [.5, .28], [.43, .4], [.31, .49], [.16, .55], [0, .57]]),
     band: uvByHeight(lathe([[.5, -.05], [.54, -.045], [.55, .05], [.535, .13], [.5, .14]], 40)), pom: true },
-  { crown: uvByHeight(lathe([[.5, .04], [.503, .17], [.475, .3], [.4, .39], [.25, .44], [0, .46]], 40)),
+  { crown: crownHalves([[.5, .04], [.503, .17], [.475, .3], [.4, .39], [.25, .44], [0, .46]]),
     band: uvByHeight(lathe([[.5, .05], [.58, .005], [.65, -.05], [.68, -.075]], 40)) },
 ];
 const hatMats = new Map();
@@ -891,33 +899,38 @@ function stripeMat(hex, k = 1) {
   return stripeMats[hex + k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, ...CLOTH(k) });
 }
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .16, depthWrite: false });
+const BODY_Y = 1.2, HEAD_S = .9;
+const HEAD_Y = 1.04 * BODY_Y + .46 * HEAD_S - .18;   // 몸통 위끝에서 머리가 살짝 겹치게
+const SIT_DY = .44 * (BODY_Y - 1);                    // 다리가 길어진 만큼 앉는 높이를 내려요
 function makeVillager(look) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const part = { skin: [], shirt: [], pants: [] };
   const mesh = (geo, kind, x, y, z, parent) => { const m = at(new THREE.Mesh(geo), x, y, z, parent); if (kind) part[kind].push(m); return m; };
-  const torso = mesh(VG.torso, 'skin', 0, .66, 0, body); torso.scale.set(1, 1, .9);
-  const shirtM = mesh(VG.shirt, null, 0, .66, 0, body); shirtM.scale.set(1, 1, .9);
+  // 비율: 목 아래(몸통·팔·다리·옷)는 위아래로 BODY_Y배, 머리는 HEAD_S배
+  const lowerG = new THREE.Group(); lowerG.scale.y = BODY_Y; body.add(lowerG);
+  const torso = mesh(VG.torso, 'skin', 0, .66, 0, lowerG); torso.scale.set(1, 1, .9);
+  const shirtM = mesh(VG.shirt, null, 0, .66, 0, lowerG); shirtM.scale.set(1, 1, .9);
   const sleeveMeshes = [];
   const legs = [], arms = [], legMeshes = [], shorts = [], capris = [], armMeshes = [];
   for (const sx of [-1, 1]) {
-    const lp = new THREE.Group(); at(lp, sx * .12, .44, 0, body);
+    const lp = new THREE.Group(); at(lp, sx * .12, .44, 0, lowerG);
     legMeshes.push(mesh(VG.leg, null, 0, -.17, 0, lp));
     shorts.push(mesh(VG.shortLeg, 'pants', 0, -.07, 0, lp));
     capris.push(mesh(VG.capri, 'pants', 0, -.12, 0, lp));
     at(box(.17, .09, .24, M('#3d3530'), .04), 0, -.38, .04, lp);
     legs.push(lp);
-    const ap = new THREE.Group(); at(ap, sx * .31, .82, 0, body); ap.rotation.z = sx * .25;
+    const ap = new THREE.Group(); at(ap, sx * .31, .82, 0, lowerG); ap.rotation.z = sx * .25;
     armMeshes.push(mesh(VG.arm, 'skin', 0, -.13, 0, ap));
     sleeveMeshes.push(mesh(VG.sleeve, null, 0, -.06, 0, ap));
     mesh(VG.hand, 'skin', 0, -.29, 0, ap);
     arms.push(ap);
   }
-  const head = new THREE.Group(); at(head, 0, 1.3, 0, body);
+  const head = new THREE.Group(); at(head, 0, HEAD_Y, 0, body); head.scale.setScalar(HEAD_S);
   mesh(VG.face, 'skin', 0, 0, 0, head);
   for (const sx of [-1, 1]) at(new THREE.Mesh(VG.cheek, M('#ff9e9e', { transparent: true, opacity: .75 })), sx * .27, -.13, .385, head).rotation.y = sx * .6;
   const eyesG = new THREE.Group(); head.add(eyesG);
   at(new THREE.Mesh(VG.mouth, M('#7a3b2e')), 0, -.14, .44, head).rotation.z = Math.PI;
-  const hairG = new THREE.Group(), accG = new THREE.Group(), outfitG = new THREE.Group(); head.add(hairG, accG); body.add(outfitG);
+  const hairG = new THREE.Group(), accG = new THREE.Group(), outfitG = new THREE.Group(); head.add(hairG, accG); lowerG.add(outfitG);
   const blob = at(new THREE.Mesh(VG.shadow, shadowMat), 0, .012, 0, root); blob.rotation.x = -Math.PI / 2;
   const v = { root, body, legs, arms, head, blob, key: '' };
   v.setLook = raw => {
@@ -1088,7 +1101,8 @@ function makeVillager(look) {
     if (l.acc === 9) at(new THREE.Mesh(VG.back, M('#fffdf6')), 0, -.15, .3, accG).scale.set(.42, .22, .32); // 마스크
     if (l.acc === HAT_ACC && l.hdsg) {                    // 내 모자
       const H = HAT3D[l.hform], hg = new THREE.Group(); accG.add(hg); hg.position.y = .1; hg.rotation.x = -.18;
-      at(new THREE.Mesh(H.crown, hatMat(l, 'crown', true, tk)), 0, 0, 0, hg);
+      at(new THREE.Mesh(H.crown.front, hatMat(l, 'hfront', false, tk)), 0, 0, 0, hg);
+      at(new THREE.Mesh(H.crown.back, hatMat(l, 'hback', false, tk)), 0, 0, 0, hg);
       if (H.band) at(new THREE.Mesh(H.band, hatMat(l, 'brim', true, tk)), 0, 0, 0, hg);
       if (H.visor) { const v = at(new THREE.Mesh(H.visor, hatMat(l, 'brim', false, tk)), 0, .04, .44, hg); v.rotation.x = Math.PI / 2 + .12; }
       if (H.pom) at(new THREE.Mesh(VG.pom, M(l.hpal[6])), 0, .62, -.02, hg);
@@ -1124,7 +1138,7 @@ function sit() {
   if (!xs.length) return '소파 자리가 꽉 찼어요. 다음에 앉아요!';
   let best = xs[0]; for (const x of xs) if (Math.abs(x - player.position.x) < Math.abs(best - player.position.x)) best = x;
   sitting = true;
-  player.position.set(best, .36, g.position.z - .05);
+  player.position.set(best, .36 - SIT_DY, g.position.z - .05);
   player.rotation.y = 0; facing = 0;
   return '폭신한 소파에 앉았어요. 움직이면 다시 일어나요.';
 }
@@ -1166,9 +1180,9 @@ function act() {
 
 // ---------- friends who are in (sent by the 출석부 site when embedded) ----------
 const SPOTS = [
-  { x: -1.92, z: -3.5, ry: 0, y: .36, sofa: true }, { x: .92, z: -3.5, ry: 0, y: .36, sofa: true }, { x: -.5, z: -3.5, ry: 0, y: .36, sofa: true },
-  { x: -6.6, z: -6.15, ry: 0, y: .38 }, { x: -4.8, z: -6.15, ry: 0, y: .38 },
-  { x: -6.6, z: -1.55, ry: Math.PI, y: .38 }, { x: -4.8, z: -1.55, ry: Math.PI, y: .38 }, { x: -3.65, z: -2.55, ry: -Math.PI / 2, y: .38 },
+  { x: -1.92, z: -3.5, ry: 0, y: .36 - SIT_DY, sofa: true }, { x: .92, z: -3.5, ry: 0, y: .36 - SIT_DY, sofa: true }, { x: -.5, z: -3.5, ry: 0, y: .36 - SIT_DY, sofa: true },
+  { x: -6.6, z: -6.15, ry: 0, y: .38 - SIT_DY }, { x: -4.8, z: -6.15, ry: 0, y: .38 - SIT_DY },
+  { x: -6.6, z: -1.55, ry: Math.PI, y: .38 - SIT_DY }, { x: -4.8, z: -1.55, ry: Math.PI, y: .38 - SIT_DY }, { x: -3.65, z: -2.55, ry: -Math.PI / 2, y: .38 - SIT_DY },
   { x: 4.6, z: -5.95, ry: Math.PI, stand: true }, { x: 2.5, z: 1.8, ry: Math.PI, stand: true }, { x: 8.3, z: 1.6, ry: Math.PI / 2, stand: true },
   { x: -8.4, z: -4.9, ry: -Math.PI / 2, stand: true }, { x: 5.6, z: -2.7, ry: -.6, stand: true }, { x: 6.2, z: 4.2, ry: -.5, stand: true },
 ];
@@ -1214,7 +1228,7 @@ function spawn(id, spotIdx) {
   if (!s.stand) { v.legs.forEach(l => l.rotation.x = -1.45); v.arms.forEach(a => a.rotation.x = -.25); }
   scene.add(v.root);
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, toneMapped: false }));
-  tag.renderOrder = 10; tag.scale.set(1.7, .4, 1); at(tag, 0, 2.2, 0, v.root);
+  tag.renderOrder = 10; tag.scale.set(1.7, .4, 1); at(tag, 0, 2.2 + (HEAD_Y - 1.3), 0, v.root);
   const n = { id, v, s, spot: spotIdx, tag, name: '', waveT: -1, phase: hashId(id) % 100 };
   n.item = item({
     name: '', g: v.root, pri: .2, hint: '인사해 볼까요?',

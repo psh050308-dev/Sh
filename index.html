@@ -101,7 +101,7 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .hs[aria-pressed="true"]{border-color:var(--ink); background:#fffdf8}
 .hs-face{width:46px; height:46px; border-radius:50%; overflow:hidden; background:#ead9bd; display:block}
 .hs-face svg{width:100%; height:auto; transform:translateY(-4%) scale(1.45); transform-origin:50% 0}
-.hs-grid.eyes .hs-face svg{transform:translateY(-66%) scale(2.6)}
+.hs-grid.eyes .hs-face svg{transform:translateY(-60%) scale(2.8)}
 .hs-name{font-family:var(--body); font-size:.64rem; line-height:1.15; text-align:center; word-break:keep-all}
 .sw.custom{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); position:relative}
 .sw.custom::after{content:"+"; position:absolute; inset:0; display:grid; place-items:center; font-family:var(--display); font-size:1rem; color:#fff; text-shadow:0 0 3px rgba(0,0,0,.55)}
@@ -630,6 +630,8 @@ const EYE = [
   (x) => `<ellipse cx="${x}" cy="64" rx="5.2" ry="6.8" fill="${INK}"/><ellipse cx="${x}" cy="66.5" rx="3.4" ry="3" fill="#6b4a3a"/>` + glint(x + 1.8, 61, 2.4) + glint(x - 1.6, 68, 1),
 ];
 let svgN = 0;
+// 비율: 목 아래는 발끝(y=152) 기준으로 위아래 BODY_Y2배, 머리는 HEAD_S2배 (3D 방과 맞춤)
+const BODY_Y2 = 1.13, HEAD_S2 = .9, HEAD_CY = 152 - (152 - 90) * BODY_Y2 + 8 - 37 * HEAD_S2;   // 머리 아래끝이 몸통 위끝과 8만큼 겹치게
 // 윗옷 몸판: 어깨는 둥글게, 밑단은 살짝 퍼지게
 const TORSO = 'M45 90 Q60 87 75 90 Q84 93 84 104 L86 121 Q87 128 80 128 L40 128 Q33 128 34 121 L36 104 Q36 93 45 90Z';
 const designURLs = new Map();
@@ -676,7 +678,7 @@ const HAT2D = [
 function hatSVG(l, uid) {
   const H = HAT2D[l.hform], url = p => designURL({ dsg: l.hdsg, dpal: l.hpal }, p, true);
   const piece = (part, [d, [x, y, w, h]]) => `<path d="${d}" fill="${l.hpal[0]}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${url(part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/><path d="${d}" fill="url(#${uid}h)"/>`;
-  return piece('crown', H.crown) + piece('brim', H.brim) + (l.hform === 1 ? `<circle cx="60" cy="12" r="7" fill="${l.hpal[6]}"/>` : '');
+  return piece('hfront', H.crown) + piece('brim', H.brim) + (l.hform === 1 ? `<circle cx="60" cy="12" r="7" fill="${l.hpal[6]}"/>` : '');
 }
 function villagerSVG(look) {
   const l = cleanLook(look), uid = 'v' + (++svgN);
@@ -780,6 +782,7 @@ function villagerSVG(look) {
   ][l.acc] || (l.acc === HAT_ACC && l.hdsg ? hatSVG(l, uid) : '');
   return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
+<g transform="translate(0 152) scale(1 ${BODY_Y2}) translate(0 -152)">
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(-18 87 106)"/>${sleeveSVG(l, uid, sh)}`
@@ -788,6 +791,8 @@ ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rota
 <path d="${isD ? FORM2D[l.dform].torso : TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
 ${isD && (l.dform === 2 || l.dform === 3 || l.dform === 5) ? '' : lower}${deco}
 ${clothShade(uid, isD ? FORM2D[l.dform].torso : TORSO, isD ? [128, 128, 143, 145, 128, 143][l.dform] : 128, TEX_K[l.tex])}
+</g>
+<g transform="translate(60 ${HEAD_CY}) scale(${HEAD_S2}) translate(-60 -60)">
 ${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>
 ${top}
@@ -795,6 +800,7 @@ ${EYE[l.eye](47, -1, sk)}${EYE[l.eye](73, 1, sk)}
 <ellipse cx="37" cy="75" rx="6" ry="3.6" fill="#ff9e9e" opacity=".7"/><ellipse cx="83" cy="75" rx="6" ry="3.6" fill="#ff9e9e" opacity=".7"/>
 <path d="M55 77 Q60 82 65 77" fill="none" stroke="#7a3b2e" stroke-width="2.2" stroke-linecap="round"/>
 ${acc}
+</g>
 </svg>`;
 }
 function mini(look) { const m = el('span', 'mini'); m.innerHTML = villagerSVG(look); return m; }
@@ -1210,8 +1216,8 @@ function colorPicker(hex, onChange) {
 }
 
 // ---------- 옷 디자인 ----------
-const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매', crown: '모자 몸통', brim: '챙·접단' };
-const KIND_PARTS = { top: ['front', 'back', 'left', 'right'], hat: ['crown', 'brim'] };
+const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매', hfront: '앞', hback: '뒤', brim: '챙·접단' };
+const KIND_PARTS = { top: ['front', 'back', 'left', 'right'], hat: ['hfront', 'hback', 'brim'] };
 const PT = p => PARTS[p] || HPARTS[p];
 const HAT_BG = '#efe6d6';
 // dz.T.top / dz.T.hat: 옷·모자 각각의 칸(d), 물감(pal), 형태(form), 고른 면(part). dz.k가 지금 고친 쪽
@@ -1223,7 +1229,7 @@ function openDesigner() {
   const l = cleanLook(mine.look);
   const T = {
     top: { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front' },
-    hat: { d: (l.hdsg || '0'.repeat(HLEN)).split('').map(c => parseInt(c, 16)), pal: l.hpal.slice(), form: l.hform, part: 'crown' },
+    hat: { d: (l.hdsg || '0'.repeat(HLEN)).split('').map(c => parseInt(c, 16)), pal: l.hpal.slice(), form: l.hform, part: 'hfront' },
   };
   dz = { T, k: 'top', tool: 'pen', cur: 2, size: 1, zoom: 1, mirror: false, both: true, hist: [], base: l, pick: false };
   for (const p of ['d', 'pal', 'form', 'part']) Object.defineProperty(dz, p, { get() { return dz.T[dz.k][p]; }, set(v) { dz.T[dz.k][p] = v; } });
@@ -1243,7 +1249,7 @@ function dzLook() {
 }
 function drawBoard() {
   // 모자 몸통은 실제 모자처럼 가로로 긴 판(2:1)으로 보여요
-  const cv = $('dz-canvas'), [off, n] = PT(dz.part), H = dz.part === 'crown' ? 384 : 768;
+  const cv = $('dz-canvas'), [off, n] = PT(dz.part), H = dz.part === 'hfront' || dz.part === 'hback' ? 384 : 768;
   if (cv.height !== H) cv.height = H;
   const g = cv.getContext('2d'), cw = cv.width / n, ch = cv.height / n;
   g.fillStyle = dz.k === 'hat' ? HAT_BG : colorOf(dz.base, 'shirt'); g.fillRect(0, 0, cv.width, cv.height);
@@ -1268,7 +1274,7 @@ function dzRefresh() {
     const look = dzLook();
     $('dz-prev').innerHTML = villagerSVG(look);
     const bg = dz.k === 'hat' ? HAT_BG : colorOf(dz.base, 'shirt'), cur = dzStr();
-    $('dz-flat').replaceChildren(...(dz.k === 'hat' ? ['crown', 'brim'] : ['front', 'back', 'right', 'left']).map(p => { const c = partCanvas(cur, dz.pal, p, bg); c.title = PART_NAMES[p]; return c; }));
+    $('dz-flat').replaceChildren(...(dz.k === 'hat' ? ['hfront', 'hback', 'brim'] : ['front', 'back', 'right', 'left']).map(p => { const c = partCanvas(cur, dz.pal, p, bg); c.title = PART_NAMES[p]; return c; }));
   });
 }
 function renderDesigner() {
@@ -1281,7 +1287,7 @@ function renderDesigner() {
   }
   $('h-design').textContent = dz.k === 'hat' ? '모자 디자인' : '옷 디자인';
   $('dz-note').textContent = dz.k === 'hat'
-    ? '모자 몸통은 앞에서 본 모양으로 그려요(뒤는 거울처럼 이어져요). 챙·접단은 캡모자 챙, 비니 접단, 버킷햇 챙이 돼요. 물감은 "색 바꾸기"로 바꿀 수 있어요.'
+    ? '모자 앞·뒤는 각각 반 바퀴씩, 앞에서 본 모양과 뒤에서 본 모양 그대로 그려요. 챙·접단은 캡모자 챙, 비니 접단, 버킷햇 챙이 돼요. 물감은 "색 바꾸기"로 바꿀 수 있어요.'
     : '앞·뒤·양쪽 소매를 따로 그려요. 비워 둔 칸은 윗옷 색으로 보여요. 물감을 고른 뒤 "색 바꾸기"로 원하는 색을 만들 수 있어요.';
   const forms = $('dz-forms'); forms.replaceChildren(el('span', 'opt-label', '형태'));
   (dz.k === 'hat' ? HFORMS : FORMS).forEach((f, i) => {
@@ -1298,7 +1304,7 @@ function renderDesigner() {
     parts.append(b);
   }
   const board = $('dz-board');
-  board.classList.toggle('z2', dz.zoom === 2); board.classList.toggle('pan', dz.tool === 'pan'); board.classList.toggle('wide', dz.part === 'crown');
+  board.classList.toggle('z2', dz.zoom === 2); board.classList.toggle('pan', dz.tool === 'pan'); board.classList.toggle('wide', dz.part === 'hfront' || dz.part === 'hback');
   if (dz.zoom === 1) { board.scrollLeft = 0; board.scrollTop = 0; }
   $('dz-canvas').setAttribute('aria-label', `옷 디자인 판 · ${PART_NAMES[dz.part]} (${PT(dz.part)[1]}×${PT(dz.part)[1]})`);
   const tools = $('dz-tools'); tools.replaceChildren();
@@ -1436,7 +1442,7 @@ function renderCloset() {
   for (const it of closet.items) {
     const li = el('li'), b = el('button', 'load'); b.type = 'button';
     const hat = it.kind === 'hat', pal = itemPal(it), dsg = itemDsg(it);
-    b.append(partCanvas(dsg, pal, hat ? 'crown' : 'front', hat ? HAT_BG : colorOf(dz.base, 'shirt')), el('span', 'cn', it.name || '이름 없음'), el('span', 'kd', hat ? '모자' : '옷'));
+    b.append(partCanvas(dsg, pal, hat ? 'hfront' : 'front', hat ? HAT_BG : colorOf(dz.base, 'shirt')), el('span', 'cn', it.name || '이름 없음'), el('span', 'kd', hat ? '모자' : '옷'));
     b.setAttribute('aria-label', `${it.name || '이름 없음'} 불러오기`);
     b.addEventListener('click', () => {
       const k = hat ? 'hat' : 'top';
