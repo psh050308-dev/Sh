@@ -65,6 +65,30 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .sw[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink)}
 .chip{font-size:.85rem; padding:3px 10px; border-radius:999px; background:#f3e7d2; color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink); color:var(--card)}
+.dz{display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:10px; align-items:start}
+@media (max-width:420px){.dz{grid-template-columns:minmax(0,1fr) 70px}}
+#dz-canvas{width:100%; height:auto; aspect-ratio:1; display:block; border-radius:10px; border:2px solid var(--line); touch-action:none; cursor:crosshair; image-rendering:pixelated}
+.dz-side{display:flex; flex-direction:column; gap:8px}
+.dz-prev{background:linear-gradient(180deg,#f6ead6,#ead9bd); border-radius:14px; padding:6px 4px 0}
+.dz-flat{display:grid; grid-template-columns:1fr 1fr; gap:3px; background:#f3e7d2; border-radius:10px; padding:4px}
+.dz-flat canvas{width:100%; height:auto; aspect-ratio:1; image-rendering:pixelated; border-radius:3px; display:block}
+.dz-parts{display:flex; flex-wrap:wrap; gap:4px; background:rgba(243,231,210,.8); border-radius:14px; padding:3px}
+.dz-parts .tab{flex:1}
+.closet{display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:12px}
+.closet-save{display:flex; gap:6px} .closet-save input{flex:1; min-width:0}
+.closet-list{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px}
+.closet-list li{display:flex; flex-direction:column; gap:4px; background:#f8eedc; border-radius:14px; padding:6px}
+.closet-list .load{display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px; background:transparent; color:var(--ink); border-radius:10px}
+.closet-list .load:hover{background:#f3e3c8}
+.closet-list canvas{width:56px; height:56px; image-rendering:pixelated; border-radius:6px}
+.closet-list .cn{font-family:var(--display); font-size:.85rem; overflow-wrap:anywhere; text-align:center}
+.closet-list .code{font-family:ui-monospace,monospace; font-size:.72rem; background:#f3e7d2; border-radius:8px; padding:2px 4px; text-align:center; user-select:all; overflow-wrap:anywhere}
+.closet-list .acts{display:flex; justify-content:center; gap:2px; flex-wrap:wrap}
+.closet-list .mk{font-size:.75rem; padding:2px 6px; border-radius:8px; background:transparent; color:var(--leaf-deep); border:0}
+.closet-list .del{font-size:.75rem; padding:2px 6px; color:var(--danger); background:transparent; border:0; align-self:center}
+.dz-prev svg{width:100%; height:auto; display:block}
+.dz-tools,.dz-pal{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.dz-pal .sw.none{background:repeating-conic-gradient(#d8d0c4 0 25%,#fffdf8 0 50%) 50%/10px 10px}
 .hs-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(60px,1fr)); gap:6px}
 .hs{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 2px 3px; border-radius:12px; background:#f3e7d2; color:var(--ink); border:2px solid transparent}
 .hs[aria-pressed="true"]{border-color:var(--ink); background:#fffdf8}
@@ -378,6 +402,7 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
 
     <div class="btns foot">
       <button class="ghost" id="btn-edit">캐릭터 꾸미기</button>
+      <button class="ghost" id="btn-design">옷 디자인하기</button>
       <button class="ghost" id="btn-signout">로그아웃</button>
       <button class="ghost danger" id="btn-delete">내 캐릭터 지우기</button>
     </div>
@@ -388,6 +413,42 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
         <button class="ghost" id="btn-delete-no">그만두기</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 옷 디자인 (방의 옷걸이 행거) -->
+<div class="modal" id="m-design" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-design">
+    <div class="sheet-head"><h2 id="h-design">옷 디자인</h2><button class="ghost small" data-close="m-design">닫기</button></div>
+    <p class="note">앞·뒤·양쪽 소매를 따로 그려요. 비워 둔 칸은 윗옷 색으로 보여요. 물감을 고른 뒤 "색 바꾸기"로 원하는 색을 만들 수 있어요.</p>
+    <div class="dz-parts" id="dz-parts"></div>
+    <div class="dz">
+      <canvas id="dz-canvas" width="384" height="384" aria-label="옷 디자인 판"></canvas>
+      <div class="dz-side">
+        <div class="dz-prev" id="dz-prev"></div>
+        <div class="dz-flat" id="dz-flat" aria-label="전체 펼친 모양"></div>
+      </div>
+    </div>
+    <div class="dz-tools" id="dz-tools"></div>
+    <div class="dz-pal" id="dz-pal"></div>
+    <div id="dz-picker"></div>
+    <div class="btns">
+      <button class="primary" id="dz-save">입어 보기</button>
+      <button class="ghost" id="dz-clear">이 면 지우기</button>
+    </div>
+    <section class="closet" aria-labelledby="h-closet">
+      <h2 id="h-closet">내 옷장</h2>
+      <div class="closet-save">
+        <input id="dz-name" maxlength="16" placeholder="디자인 이름" autocomplete="off">
+        <button class="ghost" id="dz-store">옷장에 저장</button>
+      </div>
+      <div class="closet-save">
+        <input id="dz-code" maxlength="14" placeholder="디자인 코드 (WD-XXXX-XXXX)" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="ghost" id="dz-import">코드로 가져오기</button>
+      </div>
+      <ul class="closet-list" id="closet-list"></ul>
+      <p class="note" id="closet-empty">아직 저장한 옷이 없어요</p>
+    </section>
   </div>
 </div>
 
@@ -517,7 +578,7 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const { DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
 const HAIR_TOP = [
   hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
   hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
@@ -559,8 +620,18 @@ const EYE = [
   (x) => `<ellipse cx="${x}" cy="65.5" rx="5" ry="3.8" fill="${INK}"/><path d="M${x - 6.2} 61.8 H${x + 6.2}" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`,
   (x) => `<ellipse cx="${x}" cy="64" rx="5.2" ry="6.8" fill="${INK}"/><ellipse cx="${x}" cy="66.5" rx="3.4" ry="3" fill="#6b4a3a"/>` + glint(x + 1.8, 61, 2.4) + glint(x - 1.6, 68, 1),
 ];
+let svgN = 0;
+const designURLs = new Map();
+function designURL(l, part = 'front') {
+  const key = part + l.dsg + l.dpal.join();
+  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designCanvas(l.dsg, l.dpal, part).toDataURL()); }
+  return designURLs.get(key);
+}
+// 팔(소매) 위에 소매 디자인. 화면 왼쪽 팔 = 캐릭터의 오른소매
+const sleeveSVG = (l, uid) => [[33, 18, 'right'], [87, -18, 'left']].map(([cx, r, part]) =>
+  `<g transform="rotate(${r} ${cx} 106)"><clipPath id="${uid}${part}"><ellipse cx="${cx}" cy="106" rx="7" ry="13"/></clipPath><image href="${designURL(l, part)}" x="${cx - 7}" y="93" width="14" height="26" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/></g>`).join('');
 function villagerSVG(look) {
-  const l = cleanLook(look);
+  const l = cleanLook(look), uid = 'v' + (++svgN);
   const sk = colorOf(l, 'skin'), hr = colorOf(l, 'hair'), sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants');
   const dk = shade(sh, -.2), legC = l.bottom === 0 ? pa : sk;
   const armC = l.top === 8 ? '#fffdf6' : l.top === 10 ? sk : sh;
@@ -645,6 +716,7 @@ function villagerSVG(look) {
     `<path d="M51 90 L60 113 L69 90 Z" fill="#fffdf6"/><g fill="${shade(sh, -.45)}"><circle cx="60" cy="117" r="1.6"/><circle cx="60" cy="122" r="1.6"/></g>`,
     `<path d="M49 91 L60 99 L53 104 Z M71 91 L60 99 L67 104 Z" fill="#fffdf6" stroke="rgba(75,58,42,.25)" stroke-width="1"/><path d="M57.5 99 H62.5 L61.5 104 L64 118 L60 123 L56 118 L58.5 104 Z" fill="${lum(sh) > .5 ? '#2f56a6' : '#f4bd4f'}"/>`,
     `<path d="M47 90 Q60 106 73 90 Z" fill="${sk}"/>`,
+    l.dsg ? `<clipPath id="${uid}"><rect x="37" y="90" width="46" height="36" rx="17"/></clipPath><image href="${designURL(l)}" x="37" y="90" width="46" height="36" preserveAspectRatio="none" clip-path="url(#${uid})" style="image-rendering:pixelated"/>` : '',
   ][l.top];
   const acc = [
     '',
@@ -663,6 +735,7 @@ function villagerSVG(look) {
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 <ellipse cx="33" cy="106" rx="7" ry="13" fill="${armC}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="7" ry="13" fill="${armC}" transform="rotate(-18 87 106)"/>
+${l.top === DESIGN_TOP && l.dsg ? sleeveSVG(l, uid) : ''}
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
 <rect x="37" y="90" width="46" height="36" rx="17" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
 ${lower}${deco}
@@ -745,6 +818,10 @@ async function firebaseStore() {
     isMember: async email => !!email && (await F.getDoc(F.doc(fs, 'members', email))).exists(),
     join: (email, code) => F.setDoc(F.doc(fs, 'members', email), { code, at: Date.now() }),
     getAzit: async () => { const d = await F.getDoc(F.doc(fs, 'settings', 'agit')); return d.exists() ? d.data() : null; },
+    getCloset: async uid => { const d = await F.getDoc(F.doc(fs, 'closets', uid)); return d.exists() ? d.data() : null; },
+    saveCloset: (uid, data) => F.setDoc(F.doc(fs, 'closets', uid), data),
+    shareDesign: (code, data) => F.setDoc(F.doc(fs, 'shared', code), data),
+    getShared: async code => { const d = await F.getDoc(F.doc(fs, 'shared', code)); return d.exists() ? d.data() : null; },
 
     watchVillagers: (cb, err) => F.onSnapshot(F.collection(fs, 'villagers'), s => cb(list(s).map(d => ({ uid: d.id, ...d }))), err),
     saveVillager: (uid, data) => F.setDoc(F.doc(fs, 'villagers', uid), { ...data, updatedAt: Date.now() }, { merge: true }),
@@ -793,6 +870,7 @@ function demoStore() {
     ['ex4', { name: '고구마', example: true, joined: 4, look: { skin: 2, hair: 5, style: 3, shirt: 4, pants: 3, acc: 0 }, here: true, since: now - 11 * H, seen: now - 10 * H }],
   ]);
   const ATT = new Map(), ARTS = new Map(), CMT = new Map();
+  let CLOSET = null; const SHARED = new Map();
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   for (const [uid, rate] of [['ex1', .6], ['ex2', .45], ['ex3', .3], ['ex4', .4]]) {
     for (let back = 0; back < 45; back++) {
@@ -823,6 +901,10 @@ function demoStore() {
     isMember: async () => true,
     async join() {},
     getAzit: async () => null,
+    getCloset: async () => CLOSET,
+    async saveCloset(uid, data) { CLOSET = JSON.parse(JSON.stringify(data)); },
+    async shareDesign(code, data) { if (SHARED.has(code)) throw { code: 'permission-denied' }; SHARED.set(code, data); },
+    getShared: async code => SHARED.get(code) || null,
     watchVillagers: cb => sub(() => cb([...V].map(([uid, d]) => ({ uid, ...d })))),
     async saveVillager(uid, d) { V.set(uid, { ...(V.get(uid) || {}), ...d, updatedAt: Date.now() }); bump(); },
     async removeVillager(uid) { V.delete(uid); bump(); },
@@ -876,6 +958,7 @@ addEventListener('message', e => {
   if (e.source !== roomWin() || !e.data || typeof e.data.type !== 'string') return;
   if (e.data.type === 'azit:ready') { roomReady = true; syncRoom(); }
   else if (e.data.type === 'azit:open' && e.data.what === 'attendance') openBook(me.uid, 'cal');
+  else if (e.data.type === 'azit:open' && e.data.what === 'design') openDesigner();
 });
 
 function renderOverlay() {
@@ -1075,6 +1158,261 @@ function colorPicker(hex, onChange) {
   paint('init');
   return root;
 }
+
+// ---------- 옷 디자인 ----------
+const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매' };
+let dz = null;   // { d: 칸 2560개(0~15), pal, part, tool, cur, mirror, both, hist, base, pick }
+let closet = null;
+function openDesigner() {
+  if (!mine) return;
+  const l = cleanLook(mine.look);
+  dz = { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), part: 'front', tool: 'pen', cur: 2,
+    mirror: false, both: true, hist: [], base: l, pick: false };
+  closeModal('m-me');
+  renderDesigner(); openModal('m-design');
+  loadCloset();
+}
+const dzStr = () => dz.d.map(n => n.toString(16)).join('');
+const dzLook = () => ({ ...dz.base, top: DESIGN_TOP, dsg: dzStr(), dpal: dz.pal.slice() });
+function drawBoard() {
+  const cv = $('dz-canvas'), g = cv.getContext('2d'), [off, n] = PARTS[dz.part], c = cv.width / n;
+  g.fillStyle = colorOf(dz.base, 'shirt'); g.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < n * n; i++) { const v = dz.d[off + i]; if (v) { g.fillStyle = dz.pal[v - 1]; g.fillRect((i % n) * c, Math.floor(i / n) * c, c, c); } }
+  g.strokeStyle = 'rgba(60,40,20,.13)'; g.lineWidth = 1; g.beginPath();
+  for (let k = 1; k < n; k++) { g.moveTo(Math.round(k * c) + .5, 0); g.lineTo(Math.round(k * c) + .5, cv.height); g.moveTo(0, Math.round(k * c) + .5); g.lineTo(cv.width, Math.round(k * c) + .5); }
+  g.stroke();
+  g.strokeStyle = 'rgba(60,40,20,.35)'; g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
+}
+function partCanvas(dsg, pal, part, bg) {
+  const src = designCanvas(dsg, pal, part), c = el('canvas');
+  c.width = c.height = src.width;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.drawImage(src, 0, 0);
+  return c;
+}
+let dzRaf = 0;
+function dzRefresh() {
+  if (dzRaf) return;
+  dzRaf = requestAnimationFrame(() => {
+    dzRaf = 0; if (!dz) return;
+    drawBoard();
+    const look = dzLook();
+    $('dz-prev').innerHTML = villagerSVG(look);
+    const bg = colorOf(dz.base, 'shirt');
+    $('dz-flat').replaceChildren(...['front', 'back', 'right', 'left'].map(p => { const c = partCanvas(look.dsg, look.dpal, p, bg); c.title = PART_NAMES[p]; return c; }));
+  });
+}
+function renderDesigner() {
+  dzRefresh();
+  const parts = $('dz-parts'); parts.replaceChildren();
+  for (const p in PART_NAMES) {
+    const b = el('button', 'tab', PART_NAMES[p]); b.type = 'button';
+    b.setAttribute('aria-current', dz.part === p ? 'page' : 'false');
+    b.addEventListener('click', () => { dz.part = p; renderDesigner(); });
+    parts.append(b);
+  }
+  $('dz-canvas').setAttribute('aria-label', `옷 디자인 판 · ${PART_NAMES[dz.part]} (${PARTS[dz.part][1]}×${PARTS[dz.part][1]})`);
+  const tools = $('dz-tools'); tools.replaceChildren();
+  const tool = (label, on, fn) => { const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(on)); b.addEventListener('click', fn); tools.append(b); };
+  tool('펜', dz.tool === 'pen', () => { dz.tool = 'pen'; renderDesigner(); });
+  tool('채우기', dz.tool === 'fill', () => { dz.tool = 'fill'; renderDesigner(); });
+  tool('지우개', dz.tool === 'eraser', () => { dz.tool = 'eraser'; renderDesigner(); });
+  tool('좌우 대칭', dz.mirror, () => { dz.mirror = !dz.mirror; renderDesigner(); });
+  if (dz.part === 'left' || dz.part === 'right') tool('양쪽 소매 같이', dz.both, () => { dz.both = !dz.both; renderDesigner(); });
+  const undo = el('button', 'chip', '되돌리기'); undo.type = 'button'; undo.disabled = !dz.hist.length;
+  undo.addEventListener('click', () => { const h = dz.hist.pop(); if (h) { dz.d = h; renderDesigner(); } });
+  tools.append(undo);
+
+  const pal = $('dz-pal'); pal.replaceChildren();
+  dz.pal.forEach((c, i) => {
+    const b = el('button', 'sw'); b.type = 'button'; b.style.background = c;
+    b.setAttribute('aria-label', `물감 ${i + 1}`);
+    b.setAttribute('aria-pressed', String(dz.tool !== 'eraser' && dz.cur === i + 1));
+    b.addEventListener('click', () => { dz.cur = i + 1; if (dz.tool === 'eraser') dz.tool = 'pen'; renderDesigner(); });
+    pal.append(b);
+  });
+  const edit = el('button', 'ghost small', dz.pick ? '색 바꾸기 닫기' : '색 바꾸기'); edit.type = 'button';
+  edit.disabled = dz.tool === 'eraser';
+  edit.addEventListener('click', () => { dz.pick = !dz.pick; renderDesigner(); });
+  pal.append(edit);
+  const host = $('dz-picker'); host.replaceChildren();
+  if (dz.pick && dz.tool !== 'eraser') {
+    const k = dz.cur - 1, sw = pal.children[k];
+    host.append(colorPicker(dz.pal[k], hex => { dz.pal[k] = hex; sw.style.background = hex; dzRefresh(); renderClosetSoon(); }));
+  }
+}
+const otherSleeve = p => p === 'left' ? 'right' : p === 'right' ? 'left' : null;
+function dzSet(part, x, y, v) {
+  const [off, n] = PARTS[part];
+  dz.d[off + y * n + x] = v;
+  if (dz.mirror) dz.d[off + y * n + (n - 1 - x)] = v;
+}
+function dzFill(part, x, y, v) {
+  const [off, n] = PARTS[part], from = dz.d[off + y * n + x]; if (from === v) return;
+  const st = [[x, y]];
+  while (st.length) {
+    const [a, b] = st.pop();
+    if (a < 0 || b < 0 || a >= n || b >= n || dz.d[off + b * n + a] !== from) continue;
+    dz.d[off + b * n + a] = v;
+    st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]);
+  }
+}
+{
+  const cv = $('dz-canvas');
+  let last = null;
+  const cell = e => { const r = cv.getBoundingClientRect(), n = PARTS[dz.part][1]; return [Math.floor((e.clientX - r.left) / r.width * n), Math.floor((e.clientY - r.top) / r.height * n)]; };
+  const paint = (x, y) => {
+    const n = PARTS[dz.part][1];
+    if (x < 0 || y < 0 || x >= n || y >= n) return;
+    const v = dz.tool === 'eraser' ? 0 : dz.cur, twin = dz.both && otherSleeve(dz.part);
+    for (const part of twin ? [dz.part, twin] : [dz.part]) {
+      if (dz.tool === 'fill') { dzFill(part, x, y, v); if (dz.mirror) dzFill(part, n - 1 - x, y, v); }
+      else dzSet(part, x, y, v);
+    }
+    dzRefresh();
+  };
+  cv.addEventListener('pointerdown', e => {
+    if (!dz) return;
+    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    dz.hist.push(dz.d.slice()); if (dz.hist.length > 40) dz.hist.shift();
+    last = cell(e); paint(...last);
+    if (dz.hist.length === 1) renderDesigner();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!dz || !cv.hasPointerCapture(e.pointerId) || dz.tool === 'fill') return;
+    const p = cell(e);
+    if (last) {   // 빠르게 그어도 칸이 끊기지 않게
+      const n = Math.max(Math.abs(p[0] - last[0]), Math.abs(p[1] - last[1]));
+      for (let i = 1; i <= n; i++) paint(Math.round(last[0] + (p[0] - last[0]) * i / n), Math.round(last[1] + (p[1] - last[1]) * i / n));
+    } else paint(...p);
+    last = p;
+  });
+  const end = () => { last = null; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+}
+$('dz-clear').addEventListener('click', () => {
+  dz.hist.push(dz.d.slice());
+  const [off, n] = PARTS[dz.part]; dz.d.fill(0, off, off + n * n);
+  renderDesigner();
+});
+$('dz-save').addEventListener('click', async () => {
+  if (!dz) return;
+  const look = cleanLook(dzLook());
+  if (!/[1-9a-f]/.test(look.dsg)) look.dsg = '';
+  if (await write({ look })) { toast('새 옷을 입었어요!'); closeModal('m-design'); dz = null; }
+});
+$('btn-design').addEventListener('click', openDesigner);
+
+// ---------- 내 옷장 (closets/{uid}: 나만 보는 디자인 목록, 최대 30벌) ----------
+const CLOSET_MAX = 30;
+async function loadCloset() {
+  closet = null; renderCloset();
+  try {
+    const data = await store.getCloset(me.uid);
+    let items = Array.isArray(data && data.items) ? data.items : [], gifts = Array.isArray(data && data.gifts) ? data.gifts : [];
+    const mineGifts = (GIFTS[(me.email || '').toLowerCase()] || []).filter(g => !gifts.includes(g.id));
+    if (mineGifts.length) {     // 처음 한 번만 옷장에 넣어 줘요
+      items = [...mineGifts.map(g => ({ id: g.id, name: g.name, dsg: g.dsg, dpal: g.dpal.slice(), at: Date.now() })), ...items].slice(0, CLOSET_MAX);
+      gifts = [...gifts, ...mineGifts.map(g => g.id)];
+      await store.saveCloset(me.uid, { items, gifts });
+    }
+    closet = { items: items.filter(it => it && cleanDsg(it.dsg)), gifts };
+  } catch (e) { closet = { items: [], gifts: [], error: true }; }
+  renderCloset();
+}
+let closetT = 0;
+const renderClosetSoon = () => { clearTimeout(closetT); closetT = setTimeout(renderCloset, 200); };
+function renderCloset() {
+  const ul = $('closet-list'); ul.replaceChildren();
+  $('closet-empty').textContent = !closet ? '옷장을 여는 중…' : closet.error ? '옷장을 불러오지 못했어요. 보안 규칙을 확인해 주세요.' : '아직 저장한 옷이 없어요';
+  $('closet-empty').hidden = !!(closet && closet.items.length);
+  $('dz-store').disabled = !closet || closet.error;
+  if (!closet || !dz) return;
+  const bg = colorOf(dz.base, 'shirt');
+  for (const it of closet.items) {
+    const li = el('li'), b = el('button', 'load'); b.type = 'button';
+    const pal = cleanLook({ dpal: it.dpal }).dpal;
+    b.append(partCanvas(cleanDsg(it.dsg), pal, 'front', bg), el('span', 'cn', it.name || '이름 없음'));
+    b.setAttribute('aria-label', `${it.name || '이름 없음'} 불러오기`);
+    b.addEventListener('click', () => {
+      dz.hist.push(dz.d.slice());
+      dz.d = cleanDsg(it.dsg).split('').map(c => parseInt(c, 16)); dz.pal = pal.slice();
+      $('dz-name').value = it.name || '';
+      renderDesigner(); toast(`"${it.name || '이름 없음'}"을 불러왔어요. 입어 보기를 누르면 입어요`);
+    });
+    const del = el('button', 'del', '지우기'); del.type = 'button';
+    del.addEventListener('click', async () => {
+      const items = closet.items.filter(x => x !== it);
+      try { await store.saveCloset(me.uid, { items, gifts: closet.gifts }); closet.items = items; renderCloset(); }
+      catch (e) { toast(saveMsg(e)); }
+    });
+    const acts = el('div', 'acts');
+    if (it.code) {
+      const cp = el('button', 'mk', '코드 복사'); cp.type = 'button';
+      cp.addEventListener('click', () => navigator.clipboard.writeText(it.code).then(() => toast(`${it.code} 복사했어요`), () => toast(it.code)));
+      acts.append(cp);
+    } else {
+      const mk = el('button', 'mk', '코드 만들기'); mk.type = 'button';
+      mk.addEventListener('click', () => shareItem(it, mk));
+      acts.append(mk);
+    }
+    acts.append(del);
+    li.append(b);
+    if (it.code) li.append(el('span', 'code', it.code));
+    li.append(acts); ul.append(li);
+  }
+}
+// ---------- 디자인 코드 (shared/{코드}: 멤버 누구나 읽고 자기 옷장에 복사) ----------
+const CODE_CH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => { const r = crypto.getRandomValues(new Uint8Array(8)); const c = Array.from(r, b => CODE_CH[b % CODE_CH.length]).join(''); return `WD-${c.slice(0, 4)}-${c.slice(4)}`; };
+const normCode = s => { const t = s.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^WD/, ''); return t.length === 8 ? `WD-${t.slice(0, 4)}-${t.slice(4)}` : null; };
+async function shareItem(it, btn) {
+  btn.disabled = true;
+  try {
+    let code = null;
+    for (let i = 0; i < 3 && !code; i++) {
+      const c = newCode();
+      try { await store.shareDesign(c, { name: it.name || '이름 없음', dsg: cleanDsg(it.dsg), dpal: cleanLook({ dpal: it.dpal }).dpal, owner: me.uid, ownerName: mine ? mine.name : '', at: Date.now() }); code = c; }
+      catch (e) { if (!(e && e.code === 'permission-denied')) throw e; }   // 같은 코드가 이미 있으면 다시 만들어요
+    }
+    if (!code) throw { code: 'permission-denied' };
+    const items = closet.items.map(x => x === it ? { ...x, code } : x);
+    await store.saveCloset(me.uid, { items, gifts: closet.gifts });
+    closet.items = items; renderCloset();
+    navigator.clipboard && navigator.clipboard.writeText(code).catch(() => {});
+    toast(`코드 ${code} — 친구에게 알려 주세요`);
+  } catch (e) { toast(saveMsg(e)); btn.disabled = false; }
+}
+$('dz-import').addEventListener('click', async () => {
+  if (!closet || !dz) return;
+  const code = normCode($('dz-code').value);
+  if (!code) { toast('코드를 확인해 주세요 (예: WD-7KQ2-M9XA)'); return; }
+  const btn = $('dz-import'); btn.disabled = true;
+  try {
+    const d = await store.getShared(code);
+    if (!d || !cleanDsg(d.dsg)) { toast('그런 코드가 없어요'); return; }
+    if (closet.items.length >= CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
+    const item = { id: rid(), name: String(d.name || '받은 디자인').slice(0, 16), dsg: cleanDsg(d.dsg), dpal: cleanLook({ dpal: d.dpal }).dpal, at: Date.now(), from: code };
+    const items = [item, ...closet.items];
+    await store.saveCloset(me.uid, { items, gifts: closet.gifts });
+    closet.items = items; $('dz-code').value = ''; renderCloset();
+    dz.hist.push(dz.d.slice()); dz.d = item.dsg.split('').map(c => parseInt(c, 16)); dz.pal = item.dpal.slice(); renderDesigner();
+    toast(`"${item.name}"${d.ownerName ? ` (${d.ownerName} 디자인)` : ''}을 옷장에 넣었어요`);
+  } catch (e) { toast(e && e.code === 'permission-denied' ? '코드를 불러올 수 없어요' : saveMsg(e)); }
+  finally { btn.disabled = false; }
+});
+$('dz-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('dz-import').click(); });
+$('dz-store').addEventListener('click', async () => {
+  if (!dz || !closet) return;
+  const name = $('dz-name').value.trim().slice(0, 16) || `디자인 ${closet.items.length + 1}`;
+  const look = cleanLook(dzLook());
+  if (!/[1-9a-f]/.test(look.dsg)) { toast('먼저 옷을 그려 주세요'); return; }
+  const same = closet.items.find(x => x.name === name);
+  const item = { id: same ? same.id : rid(), name, dsg: look.dsg, dpal: look.dpal, at: Date.now() };
+  const items = same ? closet.items.map(x => x === same ? item : x) : [item, ...closet.items];
+  if (items.length > CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
+  try { await store.saveCloset(me.uid, { items, gifts: closet.gifts }); closet.items = items; renderCloset(); toast(same ? `"${name}"을 고쳐 저장했어요` : `"${name}"을 옷장에 넣었어요`); }
+  catch (e) { toast(saveMsg(e)); }
+});
 
 // ---------- 출석부 (손글씨 달력) ----------
 function seeded(n) { let s = n % 2147483647 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; }

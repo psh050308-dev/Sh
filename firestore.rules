@@ -57,6 +57,29 @@ service cloud.firestore {
       allow delete: if isMe(uid);
     }
 
+    // 내 옷장: closets/{uid} 문서 하나에 디자인 목록 (본인만 보고 고쳐요, 최대 30벌)
+    match /closets/{uid} {
+      allow read: if isMe(uid);
+      allow create, update: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['items', 'gifts'])
+        && request.resource.data.items is list && request.resource.data.items.size() <= 30;
+      allow delete: if isMe(uid);
+    }
+
+    // 디자인 코드: shared/{WD-XXXX-XXXX}. 멤버 누구나 읽어 자기 옷장에 복사해요. 처음 만들 때만 쓰고, 만든 사람만 지워요
+    match /shared/{code} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && code.matches('WD-[A-Z0-9]{4}-[A-Z0-9]{4}')
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'dsg', 'dpal', 'owner', 'ownerName', 'at'])
+        && request.resource.data.dsg is string && request.resource.data.dsg.size() == 2560
+        && request.resource.data.dpal is list && request.resource.data.dpal.size() == 15
+        && request.resource.data.name is string && request.resource.data.name.size() <= 16;
+      allow update: if false;
+      allow delete: if isMember() && resource.data.owner == request.auth.uid;
+    }
+
     // 출석 도장: {날짜}_{uid}, 오늘 것만 본인이
     match /attendance/{id} {
       allow read: if isMember();

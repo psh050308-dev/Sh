@@ -413,7 +413,14 @@ let attendMark;
     at(box(.42, .02, .02, M('#8a6a44')), 0, 1.84, z, g);
   });
   solid(-9.7, -8.75, -3.25, .05);
-  item({ name: '옷걸이 행거', g, rect: [-9.7, -8.75, -3.25, .05], act: () => '앞치마랑 재킷이 걸려 있어요. 앞치마를 둘러볼까요?' });
+  item({
+    name: '옷걸이 행거', g, rect: [-9.7, -8.75, -3.25, .05], hint: '옷을 직접 디자인해 볼까요?',
+    act: () => {
+      if (!EMBED) return '옷이 잔뜩 걸려 있어요. 로그인하면 내 옷을 직접 디자인할 수 있어요.';
+      parent.postMessage({ type: 'azit:open', what: 'design' }, location.origin);
+      return '옷 디자인 판을 펼쳤어요!';
+    }
+  });
 }
 
 // ---------- work tables + chairs + globe pendant ----------
@@ -677,7 +684,37 @@ for (const [x, z, c, r] of [[-6.2, 3.6, '#7b7a72', .3], [-5.6, 4.6, '#efe7d6', -
 scene.traverse(o => { if (o.isMesh) { o.castShadow = o !== floor && o !== backWall && o !== leftWall; o.receiveShadow = true; } });
 
 // ---------- villagers (look palette shared with the 출석부 site's app.js) ----------
-const { cleanLook, colorOf, shade, lum } = window.AZIT_LOOK;   // look.js
+const { cleanLook, colorOf, shade, lum, designCanvas, DESIGN_TOP } = window.AZIT_LOOK;   // look.js
+const designMats = new Map();
+// 내 디자인: 몸통 캡슐의 앞쪽(u=0 근처)에 32×32 무늬를 붙여요
+// 소매: 팔 캡슐을 한 바퀴 감싸요 (위쪽 2/3)
+function sleeveMat(l, sh, part) {
+  const key = part + l.dsg + l.dpal.join() + sh;
+  if (designMats.has(key)) return designMats.get(key);
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = sh; g.fillRect(0, 0, 64, 64); g.imageSmoothingEnabled = false;
+  g.drawImage(designCanvas(l.dsg, l.dpal, part), 0, 2, 64, 46);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.magFilter = THREE.NearestFilter;
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
+  designMats.set(key, m);
+  return m;
+}
+function designMat(l, sh) {
+  const key = l.dsg + l.dpal.join() + sh;
+  if (designMats.has(key)) return designMats.get(key);
+  if (designMats.size > 40) { const [k, m] = designMats.entries().next().value; m.map.dispose(); m.dispose(); designMats.delete(k); }
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d'), art = designCanvas(l.dsg, l.dpal), w = 128, h = 100, y = 16;   // 앞·뒤가 몸통을 반 바퀴씩 감싸요
+  g.fillStyle = sh; g.fillRect(0, 0, 256, 128);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(art, -w / 2, y, w, h); g.drawImage(art, 256 - w / 2, y, w, h);
+  g.drawImage(designCanvas(l.dsg, l.dpal, 'back'), 128 - w / 2, y, w, h);   // 뒤 (u=0.5)
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.magFilter = THREE.NearestFilter;
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
+  designMats.set(key, m);
+  return m;
+}
 const VG = {
   torso: new THREE.CapsuleGeometry(.27, .22, 6, 16), leg: new THREE.CapsuleGeometry(.085, .16, 4, 10),
   arm: new THREE.CapsuleGeometry(.065, .18, 4, 10), hand: new THREE.SphereGeometry(.07, 10, 8),
@@ -784,8 +821,8 @@ function makeVillager(look) {
     const sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants'), hx = colorOf(l, 'hair');
     const mat = { skin: M(colorOf(l, 'skin'), { roughness: .7 }), shirt: M(sh), pants: M(pa) };
     for (const k in part) part[k].forEach(m => { m.material = mat[k]; });
-    torso.material = l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
-    armMeshes.forEach(m => { m.material = l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
+    torso.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
+    armMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
     shorts.forEach(m => { m.visible = l.bottom === 1; });
     capris.forEach(m => { m.visible = l.bottom === 4; });
