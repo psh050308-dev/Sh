@@ -16,6 +16,11 @@
   const DESIGN_TOP = TOPS.length - 1;
   // 내 디자인 옷 형태
   const FORMS = ['반팔 셔츠', '맨투맨', '원피스', '로브', '민소매', '긴팔 원피스'];
+  const DRESS_FORMS = [2, 5];
+  // 기본 윗옷마다 입는 형태: 0 반팔 · 1 맨투맨형(긴팔, 밑단 시보리) · 6 셔츠형(긴팔, 일자 밑단) · 4 민소매
+  //   티셔츠 후드티 셔츠 줄무늬 멜빵 니트 체크 하트맨투맨 조끼 넥타이 나시
+  const TOP_FORM = [0, 1, 6, 1, 0, 1, 6, 1, 6, 6, 4];
+  const DLENS = ['짧게', '길게'];
   // 내 모자: 앞(32×32, 앞 반 바퀴) · 뒤(32×32, 뒤 반 바퀴) · 챙/접단(32×32). 예전 2048칸(몸통 하나)은 앞뒤에 똑같이 넣어 읽어요
   const HFORMS = ['캡모자', '비니', '버킷햇'];
   const HPARTS = { hfront: [0, 32], hback: [1024, 32], brim: [2048, 32] };
@@ -57,6 +62,7 @@
     const o = {};
     o.dsg = cleanDsg(l && l.dsg);
     o.dform = l && Number.isInteger(l.dform) && l.dform >= 0 && l.dform < FORMS.length ? l.dform : 1;
+    o.dlen = l && l.dlen === 1 ? 1 : 0;                       // 원피스 치마 길이: 0 짧게(무릎 위) · 1 길게(무릎 아래)
     o.hdsg = cleanHdsg(l && l.hdsg);
     o.hpal = cleanPal(l && l.hpal, HPAL);
     o.hform = l && Number.isInteger(l.hform) && l.hform >= 0 && l.hform < HFORMS.length ? l.hform : 0;
@@ -248,5 +254,5 @@
     }, HPARTS, HLEN) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
   const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress-2', ...STAR_DRESS }, { id: 'gift-stargazer-cap-3', ...STAR_CAP }] };
-  window.AZIT_LOOK = { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
+  window.AZIT_LOOK = { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();

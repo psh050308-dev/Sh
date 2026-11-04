@@ -587,7 +587,7 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, cleanHdsg, FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, cleanHdsg, FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
 const HAIR_TOP = [
   hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
   hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
@@ -652,12 +652,12 @@ const FORM2D = [
     sleeve: { right: ['M28 94 Q34 90 39 96 L40 106 Q34 110 27 106 Z', [26, 91, 15, 19]], left: ['M92 94 Q86 90 81 96 L80 106 Q86 110 93 106 Z', [79, 91, 15, 19]] } },
   { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L85 121 L83 128 L37 128 L35 121 L36 104 Q36 93 45 90Z', box: [33, 88, 54, 41],
     sleeve: { right: [SLEEVE.right, [25, 91, 17, 29]], left: [SLEEVE.left, [78, 91, 17, 29]] } },
-  { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L91 137 Q92 143 85 143 L35 143 Q28 143 29 137 L36 104 Q36 93 45 90Z', box: [28, 88, 64, 56],
+  { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L94 127 Q95 132 88 132 L32 132 Q25 132 26 127 L36 104 Q36 93 45 90Z', box: [25, 88, 70, 45], long: ['M45 90 Q60 87 75 90 Q84 93 84 104 L91 137 Q92 143 85 143 L35 143 Q28 143 29 137 L36 104 Q36 93 45 90Z', [28, 88, 64, 56]],
     sleeve: { right: ['M28 94 Q34 90 39 96 L40 106 Q34 110 27 106 Z', [26, 91, 15, 19]], left: ['M92 94 Q86 90 81 96 L80 106 Q86 110 93 106 Z', [79, 91, 15, 19]] } },
   { torso: 'M44 90 Q60 86 76 90 Q85 93 86 104 L94 139 Q95 145 88 145 L32 145 Q25 145 26 139 L34 104 Q35 93 44 90Z', box: [25, 88, 70, 58],
     sleeve: { right: ['M28 94 Q34 90 39 96 L45 117 Q34 124 21 118 Z', [20, 91, 26, 33]], left: ['M92 94 Q86 90 81 96 L75 117 Q86 124 99 118 Z', [74, 91, 26, 33]] } },
   { torso: TORSO, box: [33, 88, 54, 41], sleeve: null },
-  { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L91 137 Q92 143 85 143 L35 143 Q28 143 29 137 L36 104 Q36 93 45 90Z', box: [28, 88, 64, 56],
+  { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L94 127 Q95 132 88 132 L32 132 Q25 132 26 127 L36 104 Q36 93 45 90Z', box: [25, 88, 70, 45], long: ['M45 90 Q60 87 75 90 Q84 93 84 104 L91 137 Q92 143 85 143 L35 143 Q28 143 29 137 L36 104 Q36 93 45 90Z', [28, 88, 64, 56]],
     sleeve: { right: [SLEEVE.right, [25, 91, 17, 29]], left: [SLEEVE.left, [78, 91, 17, 29]] } },
 ];
 // 옷 명암: 가장자리는 살짝 어둡게, 위는 살짝 밝게, 밑단엔 주름 선
@@ -665,6 +665,8 @@ const clothShade = (uid, d, hem, k = 1) => `<defs><linearGradient id="${uid}h" x
 <linearGradient id="${uid}w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${(.16 * k).toFixed(3)}"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${(.1 * k).toFixed(3)}"/></linearGradient></defs>
 <path d="${d}" fill="url(#${uid}h)"/><path d="${d}" fill="url(#${uid}w)"/>
 ${k ? `<path d="M45 ${hem - 10} q1.5 5 .5 9 M60 ${hem - 8} q-1 4 0 7 M75 ${hem - 10} q-1.5 5 -.5 9" stroke="#000" stroke-opacity="${(.09 * k).toFixed(3)}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : ''}`;
+// 원피스는 치마 길이(dlen)에 따라 몸판 모양이 달라요
+const formTorso = l => { const F = FORM2D[l.dform]; return l.dlen && F.long ? F.long : [F.torso, F.box]; };
 const sleeveSVG = (l, uid, sh) => FORM2D[l.dform].sleeve ? [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, part]) => {
   const [d, [x, y, w, h]] = FORM2D[l.dform].sleeve[part];
   return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/><path d="${d}" fill="url(#${uid}h)"/></g>`;
@@ -766,7 +768,7 @@ function villagerSVG(look) {
     `<path d="M51 90 L60 113 L69 90 Z" fill="#fffdf6"/><g fill="${shade(sh, -.45)}"><circle cx="60" cy="117" r="1.6"/><circle cx="60" cy="122" r="1.6"/></g>`,
     `<path d="M49 91 L60 99 L53 104 Z M71 91 L60 99 L67 104 Z" fill="#fffdf6" stroke="rgba(75,58,42,.25)" stroke-width="1"/><path d="M57.5 99 H62.5 L61.5 104 L64 118 L60 123 L56 118 L58.5 104 Z" fill="${lum(sh) > .5 ? '#2f56a6' : '#f4bd4f'}"/>`,
     `<path d="M47 90 Q60 106 73 90 Z" fill="${sk}"/>`,
-    l.dsg ? (() => { const F = FORM2D[l.dform], [x, y, w, h] = F.box; return `<clipPath id="${uid}"><path d="${F.torso}"/></clipPath><image href="${designURL(l)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid})" style="image-rendering:pixelated"/>`; })() : '',
+    l.dsg ? (() => { const [torso, [x, y, w, h]] = formTorso(l); return `<clipPath id="${uid}"><path d="${torso}"/></clipPath><image href="${designURL(l)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid})" style="image-rendering:pixelated"/>`; })() : '',
   ][l.top];
   const acc = [
     '',
@@ -786,11 +788,14 @@ function villagerSVG(look) {
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(-18 87 106)"/>${sleeveSVG(l, uid, sh)}`
-  : `<g transform="rotate(10 33 106)"><path d="${SLEEVE.right}" fill="${armC}"/><path d="${SLEEVE.right}" fill="url(#${uid}h)"/></g><g transform="rotate(-10 87 106)"><path d="${SLEEVE.left}" fill="${armC}"/><path d="${SLEEVE.left}" fill="url(#${uid}h)"/></g>`}
+  : TOP_FORM[l.top] === 0   // 반팔: 맨팔 위에 짧은 소매
+    ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(-18 87 106)"/>` +
+      [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, p]) => { const d = FORM2D[0].sleeve[p][0]; return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${armC}"/><path d="${d}" fill="url(#${uid}h)"/></g>`; }).join('')
+    : `<g transform="rotate(10 33 106)"><path d="${SLEEVE.right}" fill="${armC}"/><path d="${SLEEVE.right}" fill="url(#${uid}h)"/></g><g transform="rotate(-10 87 106)"><path d="${SLEEVE.left}" fill="${armC}"/><path d="${SLEEVE.left}" fill="url(#${uid}h)"/></g>`}
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
-<path d="${isD ? FORM2D[l.dform].torso : TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
+<path d="${isD ? formTorso(l)[0] : TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
 ${isD && (l.dform === 2 || l.dform === 3 || l.dform === 5) ? '' : lower}${deco}
-${clothShade(uid, isD ? FORM2D[l.dform].torso : TORSO, isD ? [128, 128, 143, 145, 128, 143][l.dform] : 128, TEX_K[l.tex])}
+${clothShade(uid, isD ? formTorso(l)[0] : TORSO, isD ? (l.dlen && FORM2D[l.dform].long ? 143 : [128, 128, 132, 145, 128, 132][l.dform]) : 128, TEX_K[l.tex])}
 </g>
 <g transform="translate(60 ${HEAD_CY}) scale(${HEAD_S2}) translate(-60 -60)">
 ${back}
@@ -1228,7 +1233,7 @@ function openDesigner() {
   if (!mine) return;
   const l = cleanLook(mine.look);
   const T = {
-    top: { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front' },
+    top: { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, len: l.dlen, part: 'front' },
     hat: { d: (l.hdsg || '0'.repeat(HLEN)).split('').map(c => parseInt(c, 16)), pal: l.hpal.slice(), form: l.hform, part: 'hfront' },
   };
   dz = { T, k: 'top', tool: 'pen', cur: 2, size: 1, zoom: 1, mirror: false, both: true, hist: [], base: l, pick: false };
@@ -1243,7 +1248,7 @@ const inked = d => /[1-9a-f]/.test(d);
 // 미리보기·입어 보기: 옷과 모자 디자인을 같이 담아요. 지금 고치는 쪽은 바로 입혀 보여요
 function dzLook() {
   const top = tStr('top'), hat = tStr('hat');
-  return { ...dz.base, dsg: inked(top) ? top : '', dpal: dz.T.top.pal.slice(), dform: dz.T.top.form,
+  return { ...dz.base, dsg: inked(top) ? top : '', dpal: dz.T.top.pal.slice(), dform: dz.T.top.form, dlen: dz.T.top.len,
     hdsg: inked(hat) ? hat : '', hpal: dz.T.hat.pal.slice(), hform: dz.T.hat.form,
     top: dz.k === 'top' ? DESIGN_TOP : dz.base.top, acc: dz.k === 'hat' ? HAT_ACC : dz.base.acc };
 }
@@ -1295,6 +1300,14 @@ function renderDesigner() {
     b.addEventListener('click', () => { dz.form = i; if (dz.k === 'top' && i === 4 && (dz.part === 'left' || dz.part === 'right')) dz.part = 'front'; renderDesigner(); });
     forms.append(b);
   });
+  if (dz.k === 'top' && DRESS_FORMS.includes(dz.form)) {   // 원피스 치마 길이
+    forms.append(el('span', 'dz-sep'), el('span', 'opt-label', '치마 길이'));
+    DLENS.forEach((lb, i) => {
+      const b = el('button', 'chip', lb); b.type = 'button'; b.setAttribute('aria-pressed', String(dz.T.top.len === i));
+      b.addEventListener('click', () => { dz.T.top.len = i; renderDesigner(); });
+      forms.append(b);
+    });
+  }
   const parts = $('dz-parts'); parts.replaceChildren();
   for (const p of KIND_PARTS[dz.k]) {
     if (dz.k === 'top' && dz.form === 4 && (p === 'left' || p === 'right')) continue;   // 민소매는 소매가 없어요
@@ -1413,6 +1426,7 @@ $('btn-design').addEventListener('click', openDesigner);
 const CLOSET_MAX = 30;
 // 옷장 한 벌: kind('top' 옷 / 'hat' 모자), dsg(칸), dpal(물감), dform(형태)
 const itemOf = (kind, dsg, pal, form, extra = {}) => ({ id: rid(), kind, dsg, dpal: pal.slice(), dform: form, at: Date.now(), ...extra });
+const itemLen = it => it.dlen === 1 ? 1 : 0;
 const itemDsg = it => it.kind === 'hat' ? cleanHdsg(it.hdsg || it.dsg) : cleanDsg(it.dsg);
 const itemPal = it => it.kind === 'hat' ? cleanLook({ hpal: it.hpal || it.dpal }).hpal : cleanLook({ dpal: it.dpal }).dpal;
 const itemForm = it => it.kind === 'hat' ? cleanLook({ hform: it.hform ?? it.dform }).hform : cleanLook({ dform: it.dform }).dform;
@@ -1447,7 +1461,7 @@ function renderCloset() {
     b.addEventListener('click', () => {
       const k = hat ? 'hat' : 'top';
       if (dz.k !== k) { dz.k = k; dz.hist = []; } else dz.hist.push(dz.d.slice());
-      dz.d = dsg.split('').map(c => parseInt(c, 16)); dz.pal = pal.slice(); dz.form = itemForm(it);
+      dz.d = dsg.split('').map(c => parseInt(c, 16)); dz.pal = pal.slice(); dz.form = itemForm(it); if (!hat) dz.T.top.len = itemLen(it);
       $('dz-name').value = it.name || '';
       renderDesigner(); toast(`"${it.name || '이름 없음'}"을 불러왔어요. 입어 보기를 누르면 입어요`);
     });
@@ -1483,7 +1497,7 @@ async function shareItem(it, btn) {
     let code = null;
     for (let i = 0; i < 3 && !code; i++) {
       const c = newCode();
-      try { await store.shareDesign(c, { name: it.name || '이름 없음', kind: it.kind === 'hat' ? 'hat' : 'top', dsg: itemDsg(it), dpal: itemPal(it), dform: itemForm(it), owner: me.uid, ownerName: mine ? mine.name : '', at: Date.now() }); code = c; }
+      try { await store.shareDesign(c, { name: it.name || '이름 없음', kind: it.kind === 'hat' ? 'hat' : 'top', dsg: itemDsg(it), dpal: itemPal(it), dform: itemForm(it), dlen: itemLen(it), owner: me.uid, ownerName: mine ? mine.name : '', at: Date.now() }); code = c; }
       catch (e) { if (!(e && e.code === 'permission-denied')) throw e; }   // 같은 코드가 이미 있으면 다시 만들어요
     }
     if (!code) throw { code: 'permission-denied' };
@@ -1505,12 +1519,12 @@ $('dz-import').addEventListener('click', async () => {
     if (!d || !itemDsg({ ...d, kind })) { toast('그런 코드가 없어요'); return; }
     if (closet.items.length >= CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
     const src = { ...d, kind };
-    const item = itemOf(kind, itemDsg(src), itemPal(src), itemForm(src), { name: String(d.name || '받은 디자인').slice(0, 16), from: code });
+    const item = itemOf(kind, itemDsg(src), itemPal(src), itemForm(src), { name: String(d.name || '받은 디자인').slice(0, 16), from: code, dlen: itemLen(d) });
     const items = [item, ...closet.items];
     await store.saveCloset(me.uid, { items, gifts: closet.gifts });
     closet.items = items; $('dz-code').value = ''; renderCloset();
     if (dz.k !== kind) { dz.k = kind; dz.hist = []; } else dz.hist.push(dz.d.slice());
-    dz.d = item.dsg.split('').map(c => parseInt(c, 16)); dz.pal = item.dpal.slice(); dz.form = item.dform; renderDesigner();
+    dz.d = item.dsg.split('').map(c => parseInt(c, 16)); dz.pal = item.dpal.slice(); dz.form = item.dform; if (kind === 'top') dz.T.top.len = item.dlen; renderDesigner();
     toast(`"${item.name}"${d.ownerName ? ` (${d.ownerName} 디자인)` : ''}을 옷장에 넣었어요`);
   } catch (e) { toast(e && e.code === 'permission-denied' ? '코드를 불러올 수 없어요' : saveMsg(e)); }
   finally { btn.disabled = false; }
@@ -1522,7 +1536,7 @@ $('dz-store').addEventListener('click', async () => {
   const cur = dzStr();
   if (!inked(cur)) { toast(dz.k === 'hat' ? '먼저 모자를 그려 주세요' : '먼저 옷을 그려 주세요'); return; }
   const same = closet.items.find(x => x.name === name && (x.kind === 'hat') === (dz.k === 'hat'));
-  const item = itemOf(dz.k, cur, dz.pal, dz.form, { id: same ? same.id : rid(), name });
+  const item = itemOf(dz.k, cur, dz.pal, dz.form, { id: same ? same.id : rid(), name, ...(dz.k === 'top' ? { dlen: dz.T.top.len } : {}) });
   const items = same ? closet.items.map(x => x === same ? item : x) : [item, ...closet.items];
   if (items.length > CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
   try { await store.saveCloset(me.uid, { items, gifts: closet.gifts }); closet.items = items; renderCloset(); toast(same ? `"${name}"을 고쳐 저장했어요` : `"${name}"을 옷장에 넣었어요`); }

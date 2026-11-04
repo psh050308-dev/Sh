@@ -684,7 +684,7 @@ for (const [x, z, c, r] of [[-6.2, 3.6, '#7b7a72', .3], [-5.6, 4.6, '#efe7d6', -
 scene.traverse(o => { if (o.isMesh) { o.castShadow = o !== floor && o !== backWall && o !== leftWall; o.receiveShadow = true; } });
 
 // ---------- villagers (look palette shared with the 출석부 site's app.js) ----------
-const { cleanLook, colorOf, shade, lum, designCanvas, DESIGN_TOP, HAT_ACC, TEX_K } = window.AZIT_LOOK;   // look.js
+const { cleanLook, colorOf, shade, lum, designCanvas, DESIGN_TOP, HAT_ACC, TEX_K, TOP_FORM } = window.AZIT_LOOK;   // look.js
 const designMats = new Map();
 // ---------- 천 느낌 ----------
 // 아주 약한 직물 짜임 (요철 맵)
@@ -837,13 +837,15 @@ const FORM3D = (() => {
   const sleeveBell = lathe([[0, -.26], [.145, -.26], [.125, -.19], [.105, -.12], [.09, -.05], [.076, .01], [.05, .05], [0, .07]], 22);
   const body = lathe([[0, -.36], [.335, -.36], [.33, -.3], [.31, -.18], [.3, -.06], [.3, .06], [.29, .17], [.25, .27], [.17, .35], [0, .38]], 36);
   const sweat = lathe([[0, -.35], [.295, -.35], [.31, -.31], [.315, -.2], [.305, -.07], [.3, .06], [.29, .17], [.25, .27], [.17, .35], [0, .38]], 36);
-  const dress = lathe([[0, -.47], [.43, -.47], [.4, -.37], [.36, -.26], [.32, -.15], [.3, -.04], [.3, .07], [.29, .18], [.24, .28], [.16, .35], [0, .38]], 40);
+  const dress = lathe([[0, -.36], [.46, -.36], [.42, -.29], [.37, -.2], [.325, -.11], [.3, -.02], [.3, .07], [.29, .18], [.24, .28], [.16, .35], [0, .38]], 40);   // 짧은 A라인 (허벅지 중간)
+  const dressLong = lathe([[0, -.47], [.43, -.47], [.4, -.37], [.36, -.26], [.32, -.15], [.3, -.04], [.3, .07], [.29, .18], [.24, .28], [.16, .35], [0, .38]], 40);   // 무릎 아래
   const robe = lathe([[0, -.56], [.46, -.56], [.43, -.44], [.4, -.32], [.37, -.2], [.34, -.08], [.33, .04], [.32, .15], [.27, .26], [.19, .34], [0, .39]], 40);
-  return [{ body, sleeve: sleeveShort }, { body: sweat, sleeve: sleeveLong }, { body: dress, sleeve: sleeveShort }, { body: robe, sleeve: sleeveBell }, { body, sleeve: null }, { body: dress, sleeve: sleeveLong }];
+  return [{ body, sleeve: sleeveShort }, { body: sweat, sleeve: sleeveLong }, { body: dress, long: dressLong, sleeve: sleeveShort }, { body: robe, sleeve: sleeveBell }, { body, sleeve: null }, { body: dress, long: dressLong, sleeve: sleeveLong }, { body, sleeve: sleeveLong }];   // 마지막(6)은 기본 셔츠형
 })();
 GARMENT_OPTS.set(VG.shirt, {}); GARMENT_OPTS.set(VG.sleeve, { folds: 5, amp: .005, from: .7, side: .04 });
 FORM3D.forEach((f, i) => {
   if (!GARMENT_OPTS.has(f.body)) GARMENT_OPTS.set(f.body, i === 2 || i === 3 || i === 5 ? { folds: 9, amp: .024, from: .7 } : i === 1 ? { folds: 8, amp: .008 } : {});
+  if (f.long && !GARMENT_OPTS.has(f.long)) GARMENT_OPTS.set(f.long, { folds: 9, amp: .024, from: .7 });
   if (f.sleeve && !GARMENT_OPTS.has(f.sleeve)) GARMENT_OPTS.set(f.sleeve, i === 3 ? { folds: 6, amp: .012, from: .8, side: .04 } : { folds: 5, amp: .005, from: .7, side: .04 });
 });
 // ---------- 내 모자 (캡모자 / 비니 / 버킷햇) ----------
@@ -942,9 +944,9 @@ function makeVillager(look) {
     for (const k in part) part[k].forEach(m => { m.material = mat[k]; });
     const tk = TEX_K[l.tex];
     shirtM.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh, tk) : l.top === 3 ? stripeMat(sh, tk) : l.top === 5 ? patMat('knit', sh, tk) : l.top === 6 ? patMat('check', sh, tk) : clothM(sh, tk);
-    const isD = l.top === DESIGN_TOP && !!l.dsg, form = isD ? FORM3D[l.dform] : null;
-    shirtM.geometry = garment(form ? form.body : VG.shirt, tk);
-    sleeveMeshes.forEach(m => { m.geometry = garment(form ? (form.sleeve || VG.sleeve) : VG.sleeve, tk); m.visible = form ? !!form.sleeve : l.top !== 10; });
+    const isD = l.top === DESIGN_TOP && !!l.dsg, form = FORM3D[isD ? l.dform : (TOP_FORM[l.top] ?? 1)];
+    shirtM.geometry = garment(isD && l.dlen && form.long ? form.long : form.body, tk);
+    sleeveMeshes.forEach(m => { if (form.sleeve) m.geometry = garment(form.sleeve, tk); m.visible = !!form.sleeve; });
     legMeshes.forEach(m => m.scale.set(l.bottom === 0 ? 1.2 : 1, 1, l.bottom === 0 ? 1.2 : 1));
     sleeveMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right', tk) : l.top === 8 ? clothM('#fffdf6', tk) : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh, tk) : clothM(sh, tk); });
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
