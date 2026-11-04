@@ -686,6 +686,44 @@ scene.traverse(o => { if (o.isMesh) { o.castShadow = o !== floor && o !== backWa
 // ---------- villagers (look palette shared with the 출석부 site's app.js) ----------
 const { cleanLook, colorOf, shade, lum, designCanvas, DESIGN_TOP } = window.AZIT_LOOK;   // look.js
 const designMats = new Map();
+// ---------- 천 느낌 ----------
+// 아주 약한 직물 짜임 (요철 맵)
+let WEAVE = null;
+function weave() {
+  if (WEAVE) return WEAVE;
+  WEAVE = canvasTex(64, 64, (g, w, h) => {
+    g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {   // 바둑판처럼 엇갈린 아주 작은 올
+      g.fillStyle = ((x + y) / 2) % 2 ? '#868686' : '#7a7a7a'; g.fillRect(x, y, 2, 2);
+    }
+  }, 48, 30);
+  return WEAVE;
+}
+const CLOTH = () => ({ roughness: .93, metalness: 0, vertexColors: true, bumpMap: weave(), bumpScale: .04 });
+const clothMats = {};
+const clothM = hex => clothMats[hex] || (clothMats[hex] = new THREE.MeshStandardMaterial({ color: hex, ...CLOTH() }));
+const pixelTex = c => {   // 도트는 또렷하게, 경계만 살짝 매끄럽게 (8배로 키운 뒤 선형 보간)
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+};
+// 옷 겉감: 무늬를 실제 높이 기준으로 붙이고(위아래 늘어짐 없이), 밑단으로 갈수록 주름이 지고 골과 옆구리에 그림자를 넣어요
+function clothify(geo, { folds = 8, amp = .014, from = .55, side = .07 } = {}) {
+  const pos = geo.attributes.position, uv = geo.attributes.uv, n = pos.count;
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < n; i++) { const y = pos.getY(i); if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = (y - y0) / (y1 - y0 || 1);
+    uv.setY(i, t);
+    const phi = Math.atan2(x, z), r = Math.hypot(x, z), low = Math.max(0, (from - t) / from), wave = Math.sin(phi * folds);
+    if (r > 1e-4) { const k = (r + amp * low * wave) / r; pos.setX(i, x * k); pos.setZ(i, z * k); }
+    const c = 1 - .13 * low * (.5 - .5 * wave) - side * Math.pow(Math.abs(Math.sin(phi)), 3) - .05 * (1 - t);
+    col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = Math.max(.6, c);
+  }
+  uv.needsUpdate = true; pos.needsUpdate = true;
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
 // 내 디자인: 몸통 캡슐의 앞쪽(u=0 근처)에 32×32 무늬를 붙여요
 // 소매: 팔 캡슐을 한 바퀴 감싸요 (위쪽 2/3)
 function sleeveMat(l, sh, part) {
@@ -696,8 +734,7 @@ function sleeveMat(l, sh, part) {
   g.fillStyle = sh; g.fillRect(0, 0, 256, 256);
   g.imageSmoothingEnabled = false;
   g.drawImage(designCanvas(l.dsg, l.dpal, part), 0, 0, 256, 256);
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; t.magFilter = THREE.NearestFilter;
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: pixelTex(c), ...CLOTH() });
   designMats.set(key, m);
   return m;
 }
@@ -706,12 +743,11 @@ function designMat(l, sh) {
   if (designMats.has(key)) return designMats.get(key);
   if (designMats.size > 40) { const [k, m] = designMats.entries().next().value; m.map.dispose(); m.dispose(); designMats.delete(k); }
   const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
-  const g = c.getContext('2d'), art = designCanvas(l.dsg, l.dpal), w = 512, h = 440, y = 24;   // 앞·뒤가 몸통을 반 바퀴씩 감싸요
+  const g = c.getContext('2d'), art = designCanvas(l.dsg, l.dpal), w = 512, h = 512, y = 0;   // 앞·뒤가 몸통을 반 바퀴씩, 위아래 끝까지 감싸요
   g.fillStyle = sh; g.fillRect(0, 0, 1024, 512); g.imageSmoothingEnabled = false;
   g.drawImage(art, -w / 2, y, w, h); g.drawImage(art, 1024 - w / 2, y, w, h);
   g.drawImage(designCanvas(l.dsg, l.dpal, 'back'), 512 - w / 2, y, w, h);   // 뒤 (u=0.5)
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; t.magFilter = THREE.NearestFilter;
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: pixelTex(c), ...CLOTH() });
   designMats.set(key, m);
   return m;
 }
@@ -782,7 +818,7 @@ function patMat(kind, hex) {
     if (kind === 'knit') for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 3, h);
     else { g.globalAlpha = .55; for (let i = 0; i < w; i += 16) { g.fillRect(i, 0, 5, h); g.fillRect(0, i, w, 5); } g.globalAlpha = 1; }
   }, kind === 'knit' ? 3 : 2, kind === 'knit' ? 1 : 2);
-  return patMats[k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .9 });
+  return patMats[k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, ...CLOTH() });
 }
 // 내 디자인 형태별 겉감·소매 (반팔 셔츠 / 맨투맨 / 원피스 / 로브 / 민소매)
 const lathe = (pts, seg) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
@@ -796,12 +832,17 @@ const FORM3D = (() => {
   const robe = lathe([[0, -.56], [.46, -.56], [.43, -.44], [.4, -.32], [.37, -.2], [.34, -.08], [.33, .04], [.32, .15], [.27, .26], [.19, .34], [0, .39]], 40);
   return [{ body, sleeve: sleeveShort }, { body: sweat, sleeve: sleeveLong }, { body: dress, sleeve: sleeveShort }, { body: robe, sleeve: sleeveBell }, { body, sleeve: null }];
 })();
+clothify(VG.shirt); clothify(VG.sleeve, { folds: 5, amp: .005, from: .7, side: .04 });
+FORM3D.forEach((f, i) => {
+  if (!f.body.attributes.color) clothify(f.body, i === 2 || i === 3 ? { folds: 9, amp: .024, from: .7 } : i === 1 ? { folds: 8, amp: .008 } : {});
+  if (f.sleeve && !f.sleeve.attributes.color) clothify(f.sleeve, i === 3 ? { folds: 6, amp: .012, from: .8, side: .04 } : { folds: 5, amp: .005, from: .7, side: .04 });
+});
 const stripeMats = {};
 function stripeMat(hex) {
   if (stripeMats[hex]) return stripeMats[hex];
   const line = lum(hex) > .6 ? shade(hex, -.35) : '#fffdf6';
   const t = canvasTex(64, 64, (g, w, h) => { g.fillStyle = hex; g.fillRect(0, 0, w, h); g.fillStyle = line; for (let y = 4; y < h; y += 16) g.fillRect(0, y, w, 6); }, 1, 3);
-  return stripeMats[hex] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
+  return stripeMats[hex] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, ...CLOTH() });
 }
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .16, depthWrite: false });
 function makeVillager(look) {
@@ -840,12 +881,12 @@ function makeVillager(look) {
     const sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants'), hx = colorOf(l, 'hair');
     const mat = { skin: M(colorOf(l, 'skin'), { roughness: .7 }), shirt: M(sh), pants: M(pa) };
     for (const k in part) part[k].forEach(m => { m.material = mat[k]; });
-    shirtM.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
+    shirtM.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : clothM(sh);
     const isD = l.top === DESIGN_TOP && !!l.dsg, form = isD ? FORM3D[l.dform] : null;
     shirtM.geometry = form ? form.body : VG.shirt;
     sleeveMeshes.forEach(m => { m.geometry = form ? (form.sleeve || VG.sleeve) : VG.sleeve; m.visible = form ? !!form.sleeve : l.top !== 10; });
     legMeshes.forEach(m => m.scale.set(l.bottom === 0 ? 1.2 : 1, 1, l.bottom === 0 ? 1.2 : 1));
-    sleeveMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
+    sleeveMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? clothM('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : clothM(sh); });
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
     shorts.forEach(m => { m.visible = l.bottom === 1; });
     capris.forEach(m => { m.visible = l.bottom === 4; });

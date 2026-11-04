@@ -648,9 +648,14 @@ const FORM2D = [
     sleeve: { right: ['M28 94 Q34 90 39 96 L45 117 Q34 124 21 118 Z', [20, 91, 26, 33]], left: ['M92 94 Q86 90 81 96 L75 117 Q86 124 99 118 Z', [74, 91, 26, 33]] } },
   { torso: TORSO, box: [33, 88, 54, 41], sleeve: null },
 ];
+// 옷 명암: 가장자리는 살짝 어둡게, 위는 살짝 밝게, 밑단엔 주름 선
+const clothShade = (uid, d, hem) => `<defs><linearGradient id="${uid}h" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".28" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>
+<linearGradient id="${uid}w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".1"/></linearGradient></defs>
+<path d="${d}" fill="url(#${uid}h)"/><path d="${d}" fill="url(#${uid}w)"/>
+<path d="M45 ${hem - 10} q1.5 5 .5 9 M60 ${hem - 8} q-1 4 0 7 M75 ${hem - 10} q-1.5 5 -.5 9" stroke="#000" stroke-opacity=".09" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
 const sleeveSVG = (l, uid, sh) => FORM2D[l.dform].sleeve ? [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, part]) => {
   const [d, [x, y, w, h]] = FORM2D[l.dform].sleeve[part];
-  return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/></g>`;
+  return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/><path d="${d}" fill="url(#${uid}h)"/></g>`;
 }).join('') : '';
 function villagerSVG(look) {
   const l = cleanLook(look), uid = 'v' + (++svgN);
@@ -757,10 +762,11 @@ function villagerSVG(look) {
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(-18 87 106)"/>${sleeveSVG(l, uid, sh)}`
-  : `<path d="${SLEEVE.right}" fill="${armC}" transform="rotate(10 33 106)"/><path d="${SLEEVE.left}" fill="${armC}" transform="rotate(-10 87 106)"/>`}
+  : `<g transform="rotate(10 33 106)"><path d="${SLEEVE.right}" fill="${armC}"/><path d="${SLEEVE.right}" fill="url(#${uid}h)"/></g><g transform="rotate(-10 87 106)"><path d="${SLEEVE.left}" fill="${armC}"/><path d="${SLEEVE.left}" fill="url(#${uid}h)"/></g>`}
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
 <path d="${isD ? FORM2D[l.dform].torso : TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
 ${isD && l.dform >= 2 && l.dform <= 3 ? '' : lower}${deco}
+${clothShade(uid, isD ? FORM2D[l.dform].torso : TORSO, isD ? [128, 128, 143, 145, 128][l.dform] : 128)}
 ${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>
 ${top}
