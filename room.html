@@ -684,18 +684,18 @@ for (const [x, z, c, r] of [[-6.2, 3.6, '#7b7a72', .3], [-5.6, 4.6, '#efe7d6', -
 scene.traverse(o => { if (o.isMesh) { o.castShadow = o !== floor && o !== backWall && o !== leftWall; o.receiveShadow = true; } });
 
 // ---------- villagers (look palette shared with the 출석부 site's app.js) ----------
-const { cleanLook, colorOf, shade, lum, designCanvas, DESIGN_TOP } = window.AZIT_LOOK;   // look.js
+const { cleanLook, colorOf, shade, lum, designCanvas, designSmooth, DESIGN_TOP } = window.AZIT_LOOK;   // look.js
 const designMats = new Map();
 // 내 디자인: 몸통 캡슐의 앞쪽(u=0 근처)에 32×32 무늬를 붙여요
 // 소매: 팔 캡슐을 한 바퀴 감싸요 (위쪽 2/3)
 function sleeveMat(l, sh, part) {
   const key = part + l.dsg + l.dpal.join() + sh;
   if (designMats.has(key)) return designMats.get(key);
-  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
   const g = c.getContext('2d');
-  g.fillStyle = sh; g.fillRect(0, 0, 64, 64); g.imageSmoothingEnabled = false;
-  g.drawImage(designCanvas(l.dsg, l.dpal, part), 0, 2, 64, 46);
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.magFilter = THREE.NearestFilter;
+  g.fillStyle = sh; g.fillRect(0, 0, 256, 256);
+  g.drawImage(designSmooth(l.dsg, l.dpal, part), 0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
   const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
   designMats.set(key, m);
   return m;
@@ -704,13 +704,12 @@ function designMat(l, sh) {
   const key = l.dsg + l.dpal.join() + sh;
   if (designMats.has(key)) return designMats.get(key);
   if (designMats.size > 40) { const [k, m] = designMats.entries().next().value; m.map.dispose(); m.dispose(); designMats.delete(k); }
-  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
-  const g = c.getContext('2d'), art = designCanvas(l.dsg, l.dpal), w = 128, h = 100, y = 16;   // 앞·뒤가 몸통을 반 바퀴씩 감싸요
-  g.fillStyle = sh; g.fillRect(0, 0, 256, 128);
-  g.imageSmoothingEnabled = false;
-  g.drawImage(art, -w / 2, y, w, h); g.drawImage(art, 256 - w / 2, y, w, h);
-  g.drawImage(designCanvas(l.dsg, l.dpal, 'back'), 128 - w / 2, y, w, h);   // 뒤 (u=0.5)
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.magFilter = THREE.NearestFilter;
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d'), art = designSmooth(l.dsg, l.dpal), w = 512, h = 440, y = 24;   // 앞·뒤가 몸통을 반 바퀴씩 감싸요
+  g.fillStyle = sh; g.fillRect(0, 0, 1024, 512);
+  g.drawImage(art, -w / 2, y, w, h); g.drawImage(art, 1024 - w / 2, y, w, h);
+  g.drawImage(designSmooth(l.dsg, l.dpal, 'back'), 512 - w / 2, y, w, h);   // 뒤 (u=0.5)
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
   const m = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, roughness: .85 });
   designMats.set(key, m);
   return m;
@@ -726,6 +725,10 @@ const VG = {
   leaf: new THREE.SphereGeometry(.09, 10, 8), bow: new THREE.SphereGeometry(.1, 10, 8), knot: new THREE.SphereGeometry(.04, 8, 6),
   lens: new THREE.TorusGeometry(.085, .013, 6, 24), bridge: new THREE.CylinderGeometry(.01, .01, .15, 6),
   shadow: new THREE.CircleGeometry(.42, 24),
+  // 윗옷 겉감: 몸통보다 한 겹 크고 밑단이 살짝 퍼져요 (밑에서 위로, 몸통 중심 기준)
+  shirt: new THREE.LatheGeometry([[0, -.36], [.335, -.36], [.33, -.3], [.31, -.18], [.3, -.06], [.3, .06], [.29, .17], [.25, .27], [.17, .35], [.0, .38]].map(([r, y]) => new THREE.Vector2(r, y)), 36),
+  // 소매: 팔보다 넉넉하고 소맷부리가 살짝 넓어요
+  sleeve: new THREE.LatheGeometry([[0, -.225], [.094, -.225], [.092, -.17], [.086, -.1], [.082, -.04], [.075, .01], [.05, .05], [0, .07]].map(([r, y]) => new THREE.Vector2(r, y)), 20),
   shortLeg: new THREE.CapsuleGeometry(.105, .05, 4, 10), curl: new THREE.SphereGeometry(.14, 12, 10), bun: new THREE.SphereGeometry(.2, 18, 14),
   hood: new THREE.TorusGeometry(.2, .085, 10, 20), skirt: new THREE.CylinderGeometry(.24, .38, .27, 24, 1, true),
   hips: new THREE.CylinderGeometry(.272, .26, .16, 24), button: new THREE.SphereGeometry(.022, 8, 6),
@@ -792,7 +795,9 @@ function makeVillager(look) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const part = { skin: [], shirt: [], pants: [] };
   const mesh = (geo, kind, x, y, z, parent) => { const m = at(new THREE.Mesh(geo), x, y, z, parent); if (kind) part[kind].push(m); return m; };
-  const torso = mesh(VG.torso, null, 0, .66, 0, body); torso.scale.set(1, 1, .9);
+  const torso = mesh(VG.torso, 'skin', 0, .66, 0, body); torso.scale.set(1, 1, .9);
+  const shirtM = mesh(VG.shirt, null, 0, .66, 0, body); shirtM.scale.set(1, 1, .9);
+  const sleeveMeshes = [];
   const legs = [], arms = [], legMeshes = [], shorts = [], capris = [], armMeshes = [];
   for (const sx of [-1, 1]) {
     const lp = new THREE.Group(); at(lp, sx * .12, .44, 0, body);
@@ -802,7 +807,8 @@ function makeVillager(look) {
     at(box(.17, .09, .24, M('#3d3530'), .04), 0, -.38, .04, lp);
     legs.push(lp);
     const ap = new THREE.Group(); at(ap, sx * .31, .82, 0, body); ap.rotation.z = sx * .25;
-    armMeshes.push(mesh(VG.arm, null, 0, -.13, 0, ap));
+    armMeshes.push(mesh(VG.arm, 'skin', 0, -.13, 0, ap));
+    sleeveMeshes.push(mesh(VG.sleeve, null, 0, -.06, 0, ap));
     mesh(VG.hand, 'skin', 0, -.29, 0, ap);
     arms.push(ap);
   }
@@ -821,8 +827,10 @@ function makeVillager(look) {
     const sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants'), hx = colorOf(l, 'hair');
     const mat = { skin: M(colorOf(l, 'skin'), { roughness: .7 }), shirt: M(sh), pants: M(pa) };
     for (const k in part) part[k].forEach(m => { m.material = mat[k]; });
-    torso.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
-    armMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
+    shirtM.material = l.top === DESIGN_TOP && l.dsg ? designMat(l, sh) : l.top === 3 ? stripeMat(sh) : l.top === 5 ? patMat('knit', sh) : l.top === 6 ? patMat('check', sh) : mat.shirt;
+    sleeveMeshes.forEach(m => { m.visible = l.top !== 10; });
+    legMeshes.forEach(m => m.scale.set(l.bottom === 0 ? 1.2 : 1, 1, l.bottom === 0 ? 1.2 : 1));
+    sleeveMeshes.forEach((m, i) => { m.material = l.top === DESIGN_TOP && l.dsg ? sleeveMat(l, sh, i ? 'left' : 'right') : l.top === 8 ? M('#fffdf6') : l.top === 10 ? mat.skin : l.top === 6 ? patMat('check', sh) : mat.shirt; });
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
     shorts.forEach(m => { m.visible = l.bottom === 1; });
     capris.forEach(m => { m.visible = l.bottom === 4; });
@@ -850,7 +858,7 @@ function makeVillager(look) {
       for (const y of [.86, .74, .62]) at(new THREE.Mesh(VG.button, M(shade(sh, -.45))), 0, y, .245, outfitG);
     }
     if (l.top === 4) {                                    // 멜빵
-      at(new THREE.Mesh(VG.hips, mat.pants), 0, .47, 0, outfitG).scale.z = .9;
+      at(new THREE.Mesh(VG.hips, mat.pants), 0, .4, 0, outfitG).scale.set(1.25, 1, 1.13);
       at(box(.3, .24, .05, mat.pants, .02), 0, .62, .222, outfitG);
       for (const sx of [-1, 1]) {
         const st = at(box(.05, .36, .03, mat.pants, .01), sx * .12, .84, .2, outfitG); st.rotation.set(-.25, 0, sx * .12);
@@ -974,6 +982,7 @@ function makeVillager(look) {
       at(new THREE.Mesh(VG.bridge, dk), 0, .0, .47, accG).rotation.z = Math.PI / 2;
     }
     if (l.acc === 9) at(new THREE.Mesh(VG.back, M('#fffdf6')), 0, -.15, .3, accG).scale.set(.42, .22, .32); // 마스크
+    outfitG.children.forEach(o => { if (o.position.z > .15) o.position.z += .03; });   // 겉감 위로 살짝 띄워요
     root.traverse(o => { if (o.isMesh && o !== blob) o.castShadow = true; });
   };
   v.setLook(look);

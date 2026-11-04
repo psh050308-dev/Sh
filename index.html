@@ -578,7 +578,7 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const { designSmooth, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
 const HAIR_TOP = [
   hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
   hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
@@ -621,15 +621,18 @@ const EYE = [
   (x) => `<ellipse cx="${x}" cy="64" rx="5.2" ry="6.8" fill="${INK}"/><ellipse cx="${x}" cy="66.5" rx="3.4" ry="3" fill="#6b4a3a"/>` + glint(x + 1.8, 61, 2.4) + glint(x - 1.6, 68, 1),
 ];
 let svgN = 0;
+// 윗옷 몸판: 어깨는 둥글게, 밑단은 살짝 퍼지게
+const TORSO = 'M45 90 Q60 87 75 90 Q84 93 84 104 L86 121 Q87 128 80 128 L40 128 Q33 128 34 121 L36 104 Q36 93 45 90Z';
 const designURLs = new Map();
 function designURL(l, part = 'front') {
   const key = part + l.dsg + l.dpal.join();
-  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designCanvas(l.dsg, l.dpal, part).toDataURL()); }
+  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designSmooth(l.dsg, l.dpal, part).toDataURL()); }
   return designURLs.get(key);
 }
 // 팔(소매) 위에 소매 디자인. 화면 왼쪽 팔 = 캐릭터의 오른소매
-const sleeveSVG = (l, uid) => [[33, 18, 'right'], [87, -18, 'left']].map(([cx, r, part]) =>
-  `<g transform="rotate(${r} ${cx} 106)"><clipPath id="${uid}${part}"><ellipse cx="${cx}" cy="106" rx="7" ry="13"/></clipPath><image href="${designURL(l, part)}" x="${cx - 7}" y="93" width="14" height="26" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/></g>`).join('');
+const SLEEVE = { right: 'M28 94 Q34 90 39 96 L41 115 Q34 120 26 116 Z', left: 'M92 94 Q86 90 81 96 L79 115 Q86 120 94 116 Z' };
+const sleeveSVG = (l, uid) => [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, part]) =>
+  `<g transform="rotate(${r} ${cx} 106)"><clipPath id="${uid}${part}"><path d="${SLEEVE[part]}"/></clipPath><image href="${designURL(l, part)}" x="${cx - 9}" y="91" width="18" height="29" preserveAspectRatio="none" clip-path="url(#${uid}${part})"/></g>`).join('');
 function villagerSVG(look) {
   const l = cleanLook(look), uid = 'v' + (++svgN);
   const sk = colorOf(l, 'skin'), hr = colorOf(l, 'hair'), sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants');
@@ -716,7 +719,7 @@ function villagerSVG(look) {
     `<path d="M51 90 L60 113 L69 90 Z" fill="#fffdf6"/><g fill="${shade(sh, -.45)}"><circle cx="60" cy="117" r="1.6"/><circle cx="60" cy="122" r="1.6"/></g>`,
     `<path d="M49 91 L60 99 L53 104 Z M71 91 L60 99 L67 104 Z" fill="#fffdf6" stroke="rgba(75,58,42,.25)" stroke-width="1"/><path d="M57.5 99 H62.5 L61.5 104 L64 118 L60 123 L56 118 L58.5 104 Z" fill="${lum(sh) > .5 ? '#2f56a6' : '#f4bd4f'}"/>`,
     `<path d="M47 90 Q60 106 73 90 Z" fill="${sk}"/>`,
-    l.dsg ? `<clipPath id="${uid}"><rect x="37" y="90" width="46" height="36" rx="17"/></clipPath><image href="${designURL(l)}" x="37" y="90" width="46" height="36" preserveAspectRatio="none" clip-path="url(#${uid})" style="image-rendering:pixelated"/>` : '',
+    l.dsg ? `<clipPath id="${uid}"><path d="${TORSO}"/></clipPath><image href="${designURL(l)}" x="33" y="88" width="54" height="41" preserveAspectRatio="none" clip-path="url(#${uid})"/>` : '',
   ][l.top];
   const acc = [
     '',
@@ -734,10 +737,10 @@ function villagerSVG(look) {
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
-<ellipse cx="33" cy="106" rx="7" ry="13" fill="${armC}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="7" ry="13" fill="${armC}" transform="rotate(-18 87 106)"/>
+<path d="M28 94 Q34 90 39 96 L41 115 Q34 120 26 116 Z" fill="${armC}" transform="rotate(10 33 106)"/><path d="M92 94 Q86 90 81 96 L79 115 Q86 120 94 116 Z" fill="${armC}" transform="rotate(-10 87 106)"/>
 ${l.top === DESIGN_TOP && l.dsg ? sleeveSVG(l, uid) : ''}
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
-<rect x="37" y="90" width="46" height="36" rx="17" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
+<path d="${TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
 ${lower}${deco}
 ${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>

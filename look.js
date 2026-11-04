@@ -109,5 +109,32 @@
     }) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
   const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe', ...ROBE }] };
-  window.AZIT_LOOK = { DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
+  // 부드럽게: 칸 계단을 다듬는 2배 확대(EPX)를 3번 → 8배 크기 캔버스
+  function epx(g, n) {
+    const o = new Array(n * n * 4), at = (x, y) => g[Math.min(n - 1, Math.max(0, y)) * n + Math.min(n - 1, Math.max(0, x))], m = n * 2;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const p = at(x, y), a = at(x, y - 1), b = at(x + 1, y), c = at(x - 1, y), d = at(x, y + 1);
+      o[(2 * y) * m + 2 * x] = c === a && c !== d && a !== b ? a : p;
+      o[(2 * y) * m + 2 * x + 1] = a === b && a !== c && b !== d ? b : p;
+      o[(2 * y + 1) * m + 2 * x] = d === c && d !== b && c !== a ? c : p;
+      o[(2 * y + 1) * m + 2 * x + 1] = b === d && b !== a && d !== c ? d : p;
+    }
+    return o;
+  }
+  const scache = new Map();
+  function designSmooth(dsg, dpal, part = 'front') {
+    const key = part + dsg + dpal.join();
+    if (scache.has(key)) return scache.get(key);
+    const [off, n0] = PARTS[part];
+    let g = Array.from({ length: n0 * n0 }, (_, i) => parseInt(dsg[off + i], 16)), n = n0;
+    for (let k = 0; k < 3; k++) { g = epx(g, n); n *= 2; }
+    const c = document.createElement('canvas'); c.width = c.height = n;
+    const ctx = c.getContext('2d'), img = ctx.createImageData(n, n), rgb = dpal.map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+    for (let i = 0; i < n * n; i++) { const v = g[i]; if (v) { const [r, gg, b] = rgb[v - 1]; img.data[i * 4] = r; img.data[i * 4 + 1] = gg; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } }
+    ctx.putImageData(img, 0, 0);
+    if (scache.size > 60) scache.delete(scache.keys().next().value);
+    scache.set(key, c);
+    return c;
+  }
+  window.AZIT_LOOK = { designSmooth, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();
