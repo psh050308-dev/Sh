@@ -67,11 +67,15 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .chip[aria-pressed="true"]{background:var(--ink); color:var(--card)}
 .dz{display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:10px; align-items:start}
 @media (max-width:420px){.dz{grid-template-columns:minmax(0,1fr) 70px}}
-#dz-canvas{width:100%; height:auto; aspect-ratio:1; display:block; border-radius:10px; border:2px solid var(--line); touch-action:none; cursor:crosshair; image-rendering:pixelated}
+.dz-board{border-radius:10px; border:2px solid var(--line); overflow:hidden; aspect-ratio:1; position:relative}
+#dz-canvas{width:100%; height:auto; aspect-ratio:1; display:block; touch-action:none; cursor:crosshair; image-rendering:pixelated}
+.dz-board.z2 #dz-canvas{width:200%}
+.dz-board.pan #dz-canvas{cursor:grab}
 .dz-side{display:flex; flex-direction:column; gap:8px}
 .dz-prev{background:linear-gradient(180deg,#f6ead6,#ead9bd); border-radius:14px; padding:6px 4px 0}
 .dz-flat{display:grid; grid-template-columns:1fr 1fr; gap:3px; background:#f3e7d2; border-radius:10px; padding:4px}
 .dz-flat canvas{width:100%; height:auto; aspect-ratio:1; image-rendering:pixelated; border-radius:3px; display:block}
+.dz-sep{width:1px; height:22px; background:var(--line)}
 .dz-parts{display:flex; flex-wrap:wrap; gap:4px; background:rgba(243,231,210,.8); border-radius:14px; padding:3px}
 .dz-parts .tab{flex:1}
 .closet{display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:12px}
@@ -424,7 +428,7 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
     <div class="dz-tools" id="dz-forms" role="group" aria-label="옷 형태"></div>
     <div class="dz-parts" id="dz-parts"></div>
     <div class="dz">
-      <canvas id="dz-canvas" width="384" height="384" aria-label="옷 디자인 판"></canvas>
+      <div class="dz-board" id="dz-board"><canvas id="dz-canvas" width="768" height="768" aria-label="옷 디자인 판"></canvas></div>
       <div class="dz-side">
         <div class="dz-prev" id="dz-prev"></div>
         <div class="dz-flat" id="dz-flat" aria-label="전체 펼친 모양"></div>
@@ -579,7 +583,7 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { FORMS, designSmooth, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const { FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
 const HAIR_TOP = [
   hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
   hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
@@ -627,7 +631,7 @@ const TORSO = 'M45 90 Q60 87 75 90 Q84 93 84 104 L86 121 Q87 128 80 128 L40 128 
 const designURLs = new Map();
 function designURL(l, part = 'front') {
   const key = part + l.dsg + l.dpal.join();
-  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designSmooth(l.dsg, l.dpal, part).toDataURL()); }
+  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designCanvas(l.dsg, l.dpal, part).toDataURL()); }
   return designURLs.get(key);
 }
 // 팔(소매) 위에 소매 디자인. 화면 왼쪽 팔 = 캐릭터의 오른소매
@@ -646,7 +650,7 @@ const FORM2D = [
 ];
 const sleeveSVG = (l, uid, sh) => FORM2D[l.dform].sleeve ? [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, part]) => {
   const [d, [x, y, w, h]] = FORM2D[l.dform].sleeve[part];
-  return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})"/></g>`;
+  return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/></g>`;
 }).join('') : '';
 function villagerSVG(look) {
   const l = cleanLook(look), uid = 'v' + (++svgN);
@@ -734,7 +738,7 @@ function villagerSVG(look) {
     `<path d="M51 90 L60 113 L69 90 Z" fill="#fffdf6"/><g fill="${shade(sh, -.45)}"><circle cx="60" cy="117" r="1.6"/><circle cx="60" cy="122" r="1.6"/></g>`,
     `<path d="M49 91 L60 99 L53 104 Z M71 91 L60 99 L67 104 Z" fill="#fffdf6" stroke="rgba(75,58,42,.25)" stroke-width="1"/><path d="M57.5 99 H62.5 L61.5 104 L64 118 L60 123 L56 118 L58.5 104 Z" fill="${lum(sh) > .5 ? '#2f56a6' : '#f4bd4f'}"/>`,
     `<path d="M47 90 Q60 106 73 90 Z" fill="${sk}"/>`,
-    l.dsg ? (() => { const F = FORM2D[l.dform], [x, y, w, h] = F.box; return `<clipPath id="${uid}"><path d="${F.torso}"/></clipPath><image href="${designURL(l)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid})"/>`; })() : '',
+    l.dsg ? (() => { const F = FORM2D[l.dform], [x, y, w, h] = F.box; return `<clipPath id="${uid}"><path d="${F.torso}"/></clipPath><image href="${designURL(l)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid})" style="image-rendering:pixelated"/>`; })() : '',
   ][l.top];
   const acc = [
     '',
@@ -1179,12 +1183,12 @@ function colorPicker(hex, onChange) {
 
 // ---------- 옷 디자인 ----------
 const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매' };
-let dz = null;   // { d: 칸 2560개(0~15), pal, part, tool, cur, mirror, both, hist, base, pick }
+let dz = null;   // { d: 칸 10240개(0~15), pal, part, tool, cur, size, zoom, mirror, both, hist, base, pick }
 let closet = null;
 function openDesigner() {
   if (!mine) return;
   const l = cleanLook(mine.look);
-  dz = { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front', tool: 'pen', cur: 2,
+  dz = { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front', tool: 'pen', cur: 2, size: 1, zoom: 1,
     mirror: false, both: true, hist: [], base: l, pick: false };
   closeModal('m-me');
   renderDesigner(); openModal('m-design');
@@ -1196,7 +1200,7 @@ function drawBoard() {
   const cv = $('dz-canvas'), g = cv.getContext('2d'), [off, n] = PARTS[dz.part], c = cv.width / n;
   g.fillStyle = colorOf(dz.base, 'shirt'); g.fillRect(0, 0, cv.width, cv.height);
   for (let i = 0; i < n * n; i++) { const v = dz.d[off + i]; if (v) { g.fillStyle = dz.pal[v - 1]; g.fillRect((i % n) * c, Math.floor(i / n) * c, c, c); } }
-  g.strokeStyle = 'rgba(60,40,20,.13)'; g.lineWidth = 1; g.beginPath();
+  g.strokeStyle = n > 32 ? 'rgba(60,40,20,.09)' : 'rgba(60,40,20,.13)'; g.lineWidth = 1; g.beginPath();
   for (let k = 1; k < n; k++) { g.moveTo(Math.round(k * c) + .5, 0); g.lineTo(Math.round(k * c) + .5, cv.height); g.moveTo(0, Math.round(k * c) + .5); g.lineTo(cv.width, Math.round(k * c) + .5); }
   g.stroke();
   g.strokeStyle = 'rgba(60,40,20,.35)'; g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
@@ -1235,13 +1239,21 @@ function renderDesigner() {
     b.addEventListener('click', () => { dz.part = p; renderDesigner(); });
     parts.append(b);
   }
+  const board = $('dz-board');
+  board.classList.toggle('z2', dz.zoom === 2); board.classList.toggle('pan', dz.tool === 'pan');
+  if (dz.zoom === 1) { board.scrollLeft = 0; board.scrollTop = 0; }
   $('dz-canvas').setAttribute('aria-label', `옷 디자인 판 · ${PART_NAMES[dz.part]} (${PARTS[dz.part][1]}×${PARTS[dz.part][1]})`);
   const tools = $('dz-tools'); tools.replaceChildren();
   const tool = (label, on, fn) => { const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(on)); b.addEventListener('click', fn); tools.append(b); };
   tool('펜', dz.tool === 'pen', () => { dz.tool = 'pen'; renderDesigner(); });
   tool('채우기', dz.tool === 'fill', () => { dz.tool = 'fill'; renderDesigner(); });
   tool('지우개', dz.tool === 'eraser', () => { dz.tool = 'eraser'; renderDesigner(); });
+  tool('이동', dz.tool === 'pan', () => { dz.tool = 'pan'; renderDesigner(); });
   tool('좌우 대칭', dz.mirror, () => { dz.mirror = !dz.mirror; renderDesigner(); });
+  tools.append(el('span', 'dz-sep'));
+  for (const [sz, lb] of [[1, '가늘게'], [2, '보통'], [3, '굵게']]) tool(lb, dz.size === sz, () => { dz.size = sz; if (dz.tool === 'fill' || dz.tool === 'pan') dz.tool = 'pen'; renderDesigner(); });
+  tool(dz.zoom === 2 ? '확대 끄기' : '확대', dz.zoom === 2, () => { dz.zoom = dz.zoom === 2 ? 1 : 2; renderDesigner(); });
+  tools.append(el('span', 'dz-sep'));
   if (dz.part === 'left' || dz.part === 'right') tool('양쪽 소매 같이', dz.both, () => { dz.both = !dz.both; renderDesigner(); });
   const undo = el('button', 'chip', '되돌리기'); undo.type = 'button'; undo.disabled = !dz.hist.length;
   undo.addEventListener('click', () => { const h = dz.hist.pop(); if (h) { dz.d = h; renderDesigner(); } });
@@ -1267,9 +1279,12 @@ function renderDesigner() {
 }
 const otherSleeve = p => p === 'left' ? 'right' : p === 'right' ? 'left' : null;
 function dzSet(part, x, y, v) {
-  const [off, n] = PARTS[part];
-  dz.d[off + y * n + x] = v;
-  if (dz.mirror) dz.d[off + y * n + (n - 1 - x)] = v;
+  const [off, n] = PARTS[part], r = dz.size - 1, a = -Math.floor(r / 2), b = a + r;
+  for (let yy = y + a; yy <= y + b; yy++) for (let xx = x + a; xx <= x + b; xx++) {
+    if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
+    dz.d[off + yy * n + xx] = v;
+    if (dz.mirror) dz.d[off + yy * n + (n - 1 - xx)] = v;
+  }
 }
 function dzFill(part, x, y, v) {
   const [off, n] = PARTS[part], from = dz.d[off + y * n + x]; if (from === v) return;
@@ -1295,15 +1310,19 @@ function dzFill(part, x, y, v) {
     }
     dzRefresh();
   };
+  let panFrom = null;
   cv.addEventListener('pointerdown', e => {
     if (!dz) return;
     e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    if (dz.tool === 'pan') { const bd = $('dz-board'); panFrom = [e.clientX, e.clientY, bd.scrollLeft, bd.scrollTop]; return; }
     dz.hist.push(dz.d.slice()); if (dz.hist.length > 40) dz.hist.shift();
     last = cell(e); paint(...last);
     if (dz.hist.length === 1) renderDesigner();
   });
   cv.addEventListener('pointermove', e => {
-    if (!dz || !cv.hasPointerCapture(e.pointerId) || dz.tool === 'fill') return;
+    if (!dz || !cv.hasPointerCapture(e.pointerId)) return;
+    if (dz.tool === 'pan') { if (panFrom) { const bd = $('dz-board'); bd.scrollLeft = panFrom[2] - (e.clientX - panFrom[0]); bd.scrollTop = panFrom[3] - (e.clientY - panFrom[1]); } return; }
+    if (dz.tool === 'fill') return;
     const p = cell(e);
     if (last) {   // 빠르게 그어도 칸이 끊기지 않게
       const n = Math.max(Math.abs(p[0] - last[0]), Math.abs(p[1] - last[1]));
@@ -1311,7 +1330,7 @@ function dzFill(part, x, y, v) {
     } else paint(...p);
     last = p;
   });
-  const end = () => { last = null; };
+  const end = () => { last = null; panFrom = null; };
   cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
 }
 $('dz-clear').addEventListener('click', () => {
