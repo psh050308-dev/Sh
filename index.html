@@ -6,7 +6,7 @@
 <style>body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>아지트 출석부</title>
+<title>wiw 아지트 출석부</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Gaegu:wght@300;400;700&display=swap">
@@ -221,7 +221,7 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
 <!-- 입구: 로그인 / 캐릭터 만들기 -->
 <div class="gate" id="gate">
   <div class="gate-inner">
-    <div class="brand"><span class="leaf" aria-hidden="true"></span><h1>우리 아지트</h1></div>
+    <div class="brand"><span class="leaf" aria-hidden="true"></span><h1>wiw 아지트</h1></div>
     <p class="demo-banner" id="demo-banner" hidden>데모 화면이에요. 구글 로그인과 실제 위치 확인은 사이트를 배포하면 켜지고, 지금은 예시 친구들과 위치 시뮬레이션으로 동작을 미리 볼 수 있어요.</p>
 
     <section class="panel" id="p-login" aria-labelledby="h-login">
@@ -453,7 +453,7 @@ window.AZIT_CONFIG = {
   // 아지트 위치(lat, lng)는 공개 저장소에 두지 않고 Firestore settings/agit 문서에 넣어요 (멤버만 읽을 수 있어요).
   // 그 문서에 radius, exitMargin을 넣으면 아래 값 대신 그 값을 써요.
   azit: {
-    name: "우리 아지트",
+    name: "wiw 아지트",
     radius: 80,       // 이 거리(m) 안에 들어오면 도착
     exitMargin: 60,   // radius + 이 거리(m) 밖으로 나가야 나감 처리 (GPS 흔들림 방지)
   },
@@ -466,7 +466,7 @@ window.AZIT_CONFIG = {
 // Firebase 설정이 비어 있으면 데모 모드(예시 친구 + 위치 시뮬레이션)로 돌아가요.
 const C = window.AZIT_CONFIG || {};
 const DEMO = !C.firebase || !C.firebase.apiKey || C.firebase.apiKey.startsWith('YOUR');
-const AZIT = { name: '우리 아지트', lat: null, lng: null, radius: 80, exitMargin: 60, ...(C.azit || {}) };
+const AZIT = { name: 'wiw 아지트', lat: null, lng: null, radius: 80, exitMargin: 60, ...(C.azit || {}) };
 let ENTER = AZIT.radius, EXIT = AZIT.radius + AZIT.exitMargin;
 const num = v => typeof v === 'number' && isFinite(v);
 // Firestore settings/agit 에서 받은 위치를 적용해요
