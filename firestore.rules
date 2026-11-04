@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// 아지트 출석부 보안 규칙
+// - 멤버만 읽고 쓸 수 있어요: members/{구글 이메일} 문서가 있어야 해요.
+//   처음 로그인한 사람은 초대 코드(config/invite.code)를 입력해 스스로 등록해요.
+// - "오늘"은 한국 시간(KST) 기준이에요. index.html의 kst()와 맞춰 두었어요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMember() {
+      return signedIn() && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/members/$(request.auth.token.email));
+    }
+    function isMe(uid) { return isMember() && request.auth.uid == uid; }
+    function todayKst() {
+      let t = request.time + duration.value(9, 'h');
+      return t.year() * 10000 + t.month() * 100 + t.day();
+    }
+    function todayStr() {
+      let t = request.time + duration.value(9, 'h');
+      let m = t.month() < 10 ? '0' + string(t.month()) : string(t.month());
+      let d = t.day() < 10 ? '0' + string(t.day()) : string(t.day());
+      return string(t.year()) + '-' + m + '-' + d;
+    }
+
+    // 초대 코드: config/invite 문서의 code 필드. 콘솔에서만 정하고, 아무도 읽을 수 없어요
+    // (보안 규칙의 get()은 이 규칙과 상관없이 읽을 수 있어요)
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+
+    // 아지트 위치: settings/azit 문서 (lat, lng, 선택: radius, exitMargin, name). 멤버만 읽고, 콘솔에서만 바꿔요
+    match /settings/{doc} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+
+    // 멤버 명단: members/{구글 이메일}
+    // 초대 코드가 맞으면 본인 이메일로 스스로 등록할 수 있어요. 콘솔에서 직접 추가해도 돼요
+    match /members/{email} {
+      allow read: if signedIn() && request.auth.token.email == email;
+      allow create: if signedIn() && request.auth.token.email_verified == true
+        && request.auth.token.email == email
+        && request.resource.data.keys().hasOnly(['code', 'at'])
+        && request.resource.data.code is string
+        && request.resource.data.code == get(/databases/$(database)/documents/config/invite).data.code;
+      allow update, delete: if false;
+    }
+
+    // 캐릭터 + 지금 아지트에 있는지
+    match /villagers/{uid} {
+      allow read: if isMember();
+      allow create, update: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'look', 'here', 'since', 'seen', 'joined', 'updatedAt'])
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 12));
+      allow delete: if isMe(uid);
+    }
+
+    // 출석 도장: {날짜}_{uid}, 오늘 것만 본인이
+    match /attendance/{id} {
+      allow read: if isMember();
+      allow create, update: if isMe(request.resource.data.uid)
+        && id == request.resource.data.date + '_' + request.auth.uid
+        && request.resource.data.date == todayStr()
+        && request.resource.data.keys().hasOnly(['uid', 'date', 'first', 'last']);
+      allow delete: if false;
+    }
+
+    // 날짜 칸 그림: {uid}_{yyyymmdd}, 그날 본인만 (ART_MAX = 190000자)
+    match /days/{id} {
+      allow read: if isMember();
+      allow create, update: if isMe(request.resource.data.uid)
+        && request.resource.data.ymd == todayKst()
+        && id == request.auth.uid + '_' + string(request.resource.data.ymd)
+        && request.resource.data.img is string
+        && request.resource.data.img.size() <= 190000
+        && request.resource.data.img.matches('^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$');
+      allow delete: if false;
+    }
+
+    // 날짜 칸 코멘트: {주인}_{yyyymmdd}_{id}, 그날 멤버 누구나 (최대 200자)
+    match /comments/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.ymd == todayKst()
+        && id.matches(request.resource.data.owner + '_' + string(request.resource.data.ymd) + '_[a-z0-9]+')
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 200
+        && request.resource.data.keys().hasOnly(['owner', 'ymd', 'from', 'text', 'at']);
+      // 쓴 사람이나 출석부 주인이 지울 수 있어요
+      allow delete: if isMember()
+        && (resource.data.from == request.auth.uid || resource.data.owner == request.auth.uid);
+      allow update: if false;
+    }
+  }
+}
