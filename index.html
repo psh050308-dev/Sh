@@ -631,7 +631,7 @@ const EYE = [
 ];
 let svgN = 0;
 // 비율: 목 아래는 발끝(y=152) 기준으로 위아래 BODY_Y2배, 머리는 HEAD_S2배 (3D 방과 맞춤)
-const BODY_Y2 = 1.13, HEAD_S2 = .9, HEAD_CY = 152 - (152 - 90) * BODY_Y2 + 8 - 37 * HEAD_S2;   // 머리 아래끝이 몸통 위끝과 8만큼 겹치게
+const BODY_X2 = .84, BODY_Y2 = 1.13, HEAD_S2 = .9, HEAD_CY = 152 - (152 - 90) * BODY_Y2 + 8 - 37 * HEAD_S2;   // 머리 아래끝이 몸통 위끝과 8만큼 겹치게
 // 윗옷 몸판: 어깨는 둥글게, 밑단은 살짝 퍼지게
 const TORSO = 'M45 90 Q60 87 75 90 Q84 93 84 104 L86 121 Q87 128 80 128 L40 128 Q33 128 34 121 L36 104 Q36 93 45 90Z';
 const designURLs = new Map();
@@ -784,7 +784,7 @@ function villagerSVG(look) {
   ][l.acc] || (l.acc === HAT_ACC && l.hdsg ? hatSVG(l, uid) : '');
   return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
-<g transform="translate(0 152) scale(1 ${BODY_Y2}) translate(0 -152)">
+<g transform="translate(60 152) scale(${BODY_X2} ${BODY_Y2}) translate(-60 -152)">
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rotate(-18 87 106)"/>${sleeveSVG(l, uid, sh)}`

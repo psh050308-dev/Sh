@@ -901,7 +901,7 @@ function stripeMat(hex, k = 1) {
   return stripeMats[hex + k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, ...CLOTH(k) });
 }
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .16, depthWrite: false });
-const BODY_Y = 1.2, HEAD_S = .9;
+const BODY_Y = 1.2, HEAD_S = .9, BODY_X = .8;   // 목 아래: 위아래 1.2배, 좌우·앞뒤 0.8배 (슬림하게)
 const HEAD_Y = 1.04 * BODY_Y + .46 * HEAD_S - .18;   // 몸통 위끝에서 머리가 살짝 겹치게
 const SIT_DY = .44 * (BODY_Y - 1);                    // 다리가 길어진 만큼 앉는 높이를 내려요
 function makeVillager(look) {
@@ -909,7 +909,7 @@ function makeVillager(look) {
   const part = { skin: [], shirt: [], pants: [] };
   const mesh = (geo, kind, x, y, z, parent) => { const m = at(new THREE.Mesh(geo), x, y, z, parent); if (kind) part[kind].push(m); return m; };
   // 비율: 목 아래(몸통·팔·다리·옷)는 위아래로 BODY_Y배, 머리는 HEAD_S배
-  const lowerG = new THREE.Group(); lowerG.scale.y = BODY_Y; body.add(lowerG);
+  const lowerG = new THREE.Group(); lowerG.scale.set(BODY_X, BODY_Y, BODY_X); body.add(lowerG);
   const torso = mesh(VG.torso, 'skin', 0, .66, 0, lowerG); torso.scale.set(1, 1, .9);
   const shirtM = mesh(VG.shirt, null, 0, .66, 0, lowerG); shirtM.scale.set(1, 1, .9);
   const sleeveMeshes = [];
