@@ -6,6 +6,7 @@
 | --- | --- |
 | `index.html` | 출석부 사이트 본체 (로그인, 캐릭터 만들기, 위치 체크인, 손글씨 달력 출석부, 그림/코멘트) |
 | `room.html` | 3D 아지트 방 (three.js). 단독으로 열어도 되고, `index.html` 안에서는 `room.html?embed=1`로 열려요 |
+| `look.js` | 캐릭터 모양 정의 (색, 머리 모양, 옷 종류). `index.html`과 `room.html`이 같이 써요 |
 | `firestore.rules` | Firestore 보안 규칙 |
 
 빌드 과정은 없어요. 정적 파일 그대로 올리면 돼요.

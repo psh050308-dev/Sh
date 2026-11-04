@@ -65,6 +65,24 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .sw[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink)}
 .chip{font-size:.85rem; padding:3px 10px; border-radius:999px; background:#f3e7d2; color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink); color:var(--card)}
+.sw.custom{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); position:relative}
+.sw.custom::after{content:"+"; position:absolute; inset:0; display:grid; place-items:center; font-family:var(--display); font-size:1rem; color:#fff; text-shadow:0 0 3px rgba(0,0,0,.55)}
+.sw.custom[aria-pressed="true"]::after{content:""}
+@media (min-width:421px){.preview{position:sticky; top:8px}}
+.picker{display:flex; flex-direction:column; gap:12px; background:#fffdf8; border:2px solid var(--line); border-radius:16px; padding:12px; margin-top:8px}
+.pk-pad{position:relative; height:150px; border-radius:10px; touch-action:none; cursor:crosshair;
+  background:linear-gradient(to bottom,#fff,rgba(255,255,255,0)),linear-gradient(to right,#f00 0%,#ff0 16.67%,#0f0 33.33%,#0ff 50%,#00f 66.67%,#f0f 83.33%,#f00 100%)}
+.pk-dot{position:absolute; width:24px; height:24px; border-radius:50%; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); transform:translate(-50%,-50%); pointer-events:none}
+.pk-row{display:flex; align-items:center; gap:12px}
+.pk-bar{position:relative; flex:1; height:22px; margin:0 10px; border-radius:999px; touch-action:none; cursor:pointer}
+.pk-knob{position:absolute; top:50%; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 5px rgba(0,0,0,.4); transform:translate(-50%,-50%); pointer-events:none}
+.pk-pct{min-width:3.2em; text-align:right; font-variant-numeric:tabular-nums}
+.pk-pad:focus-visible,.pk-bar:focus-visible{outline:3px solid var(--tag); outline-offset:3px}
+.pk-info{display:grid; grid-template-columns:38px minmax(0,1.5fr) repeat(3,minmax(0,1fr)); gap:6px; align-items:end}
+.pk-sw{height:38px; border-radius:10px; border:2px solid rgba(75,58,42,.15)}
+.pk-info label{display:flex; flex-direction:column; gap:2px; font-size:.72rem; color:var(--muted); min-width:0; white-space:nowrap}
+.pk-info input{padding:6px 4px; font-size:16px; text-align:center; border-radius:10px; font-variant-numeric:tabular-nums; -moz-appearance:textfield}
+.pk-info input::-webkit-inner-spin-button,.pk-info input::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
 .field{font-family:var(--display)}
 input{font:inherit; width:100%; padding:9px 12px; border-radius:12px; border:2px solid var(--line); background:#fffdf8; color:var(--ink)}
 
@@ -438,6 +456,7 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
 
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="look.js"></script>
 <script>
 // 사이트 설정. README.md 순서대로 값을 채우면 데모 모드가 꺼지고 실제 로그인/위치 확인이 켜져요.
 window.AZIT_CONFIG = {
@@ -490,36 +509,48 @@ const ls = {
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 
-// ---------- 캐릭터 ----------
-const PAL = {
-  skin: ['#ffe3c8', '#f7cfa8', '#e9b38a', '#c98d62', '#8f5d3d'],
-  hair: ['#2b211c', '#5a3826', '#8a5a35', '#d9a45b', '#f2d58a', '#c9503c', '#6b7fd1', '#9a9a9a'],
-  shirt: ['#7cc79a', '#f4bd4f', '#f28b82', '#7fb3e0', '#b39ddb', '#fffdf6', '#4b3a2a', '#ff9f68'],
-  pants: ['#5b4a3b', '#3b4a6b', '#8a8f98', '#c9a77c', '#2b2b2b'],
-};
-const STYLES = ['단정', '삐죽', '포니테일', '단발'];
-const ACCS = ['없음', '나뭇잎', '리본', '안경'];
-const LIMIT = { skin: 5, hair: 8, style: 4, shirt: 8, pants: 5, acc: 4 };
-
-function cleanLook(l) {
-  const o = {};
-  for (const k in LIMIT) { const v = l && l[k]; o[k] = Number.isInteger(v) && v >= 0 && v < LIMIT[k] ? v : 0; }
-  return o;
-}
-function randomLook() {
-  const o = {}; for (const k in LIMIT) o[k] = Math.floor(Math.random() * LIMIT[k]); return o;
-}
+// ---------- 캐릭터 (모양 정의는 look.js) ----------
+const { PAL, STYLES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const HAIR_TOP = [
+  hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
+  hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
+  hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q90 40 60 40 Q34 42 23 64Z" fill="${hr}"/><circle cx="91" cy="40" r="5" fill="#f28b82"/>`,
+  hr => `<path d="M22 72 Q20 22 60 21 Q100 22 98 72 Q96 50 88 44 Q60 52 32 44 Q24 50 22 72Z" fill="${hr}"/>`,
+];
+const CURLS = (() => {
+  const o = [];
+  for (let a = 180; a <= 360; a += 20) { const r = a * Math.PI / 180; o.push([60 + Math.cos(r) * 34, 58 + Math.sin(r) * 33]); }
+  return o.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10"/>`).join('');
+})();
 function villagerSVG(look) {
   const l = cleanLook(look);
-  const sk = PAL.skin[l.skin], hr = PAL.hair[l.hair], sh = PAL.shirt[l.shirt], pa = PAL.pants[l.pants];
-  const back = l.style === 2 ? `<ellipse cx="95" cy="60" rx="12" ry="21" fill="${hr}" transform="rotate(22 95 60)"/>`
-    : l.style === 3 ? `<path d="M22 58 Q19 94 34 97 L86 97 Q101 94 98 58 Z" fill="${hr}"/>` : '';
-  const top = [
-    `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
-    `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
-    `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q90 40 60 40 Q34 42 23 64Z" fill="${hr}"/><circle cx="91" cy="40" r="5" fill="#f28b82"/>`,
-    `<path d="M22 72 Q20 22 60 21 Q100 22 98 72 Q96 50 88 44 Q60 52 32 44 Q24 50 22 72Z" fill="${hr}"/>`,
+  const sk = colorOf(l, 'skin'), hr = colorOf(l, 'hair'), sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants');
+  const dk = shade(sh, -.2), legC = l.bottom === 0 ? pa : sk;
+  const back = [
+    '', '',
+    `<ellipse cx="95" cy="60" rx="12" ry="21" fill="${hr}" transform="rotate(22 95 60)"/>`,
+    `<path d="M22 58 Q19 94 34 97 L86 97 Q101 94 98 58 Z" fill="${hr}"/>`,
+    `<path d="M23 60 Q16 104 28 125 Q60 131 92 125 Q104 104 97 60 Z" fill="${hr}"/>`,
+    `<ellipse cx="20" cy="82" rx="9" ry="20" fill="${hr}" transform="rotate(12 20 82)"/><ellipse cx="100" cy="82" rx="9" ry="20" fill="${hr}" transform="rotate(-12 100 82)"/>`,
+    '',
+    `<circle cx="60" cy="21" r="14" fill="${hr}"/>`,
   ][l.style];
+  const top = [
+    HAIR_TOP[0](hr), HAIR_TOP[1](hr), HAIR_TOP[2](hr), HAIR_TOP[3](hr), HAIR_TOP[0](hr),
+    HAIR_TOP[0](hr) + `<circle cx="26" cy="64" r="4" fill="#f28b82"/><circle cx="94" cy="64" r="4" fill="#f28b82"/>`,
+    `<g fill="${hr}">${CURLS}</g>` + HAIR_TOP[0](hr),
+    HAIR_TOP[0](hr) + `<ellipse cx="60" cy="33" rx="8" ry="3" fill="#f28b82"/>`,
+  ][l.style];
+  const lower = l.bottom === 1 ? `<rect x="43" y="113" width="16" height="16" rx="5" fill="${pa}"/><rect x="61" y="113" width="16" height="16" rx="5" fill="${pa}"/>`
+    : l.bottom === 2 ? `<path d="M40 111 H80 L89 135 Q60 141 31 135 Z" fill="${pa}"/>` : '';
+  const stripe = lum(sh) > .6 ? shade(sh, -.35) : '#fffdf6';
+  const deco = [
+    '',
+    `<ellipse cx="60" cy="92" rx="24" ry="7" fill="${dk}"/><path d="M55 96 V106 M65 96 V106" stroke="#fffdf6" stroke-width="1.8" stroke-linecap="round"/><rect x="47" y="111" width="26" height="9" rx="4" fill="${dk}"/>`,
+    `<path d="M49 91 L60 99 L53 104 Z M71 91 L60 99 L67 104 Z" fill="#fffdf6" stroke="rgba(75,58,42,.25)" stroke-width="1"/><g fill="${shade(sh, -.45)}"><circle cx="60" cy="106" r="1.6"/><circle cx="60" cy="113" r="1.6"/><circle cx="60" cy="120" r="1.6"/></g>`,
+    `<g fill="${stripe}"><rect x="40" y="97" width="40" height="4"/><rect x="38" y="105" width="44" height="4"/><rect x="38" y="113" width="44" height="4"/></g>`,
+    `<path d="M47 92 L49 104 M73 92 L71 104" stroke="${pa}" stroke-width="4" stroke-linecap="round"/><rect x="46" y="103" width="28" height="23" rx="5" fill="${pa}"/><circle cx="50" cy="106.5" r="1.8" fill="#f4bd4f"/><circle cx="70" cy="106.5" r="1.8" fill="#f4bd4f"/>`,
+  ][l.top];
   const acc = [
     '',
     `<g transform="rotate(-30 80 28)"><ellipse cx="80" cy="28" rx="10" ry="4.5" fill="#7cc79a"/><path d="M71 28 H89" stroke="#235a3d" stroke-width="1.2"/></g>`,
@@ -528,11 +559,12 @@ function villagerSVG(look) {
   ][l.acc];
   return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
-<rect x="45" y="116" width="13" height="28" rx="6" fill="${pa}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${pa}"/>
+<rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
 <ellipse cx="33" cy="106" rx="7" ry="13" fill="${sh}" transform="rotate(18 33 106)"/><ellipse cx="87" cy="106" rx="7" ry="13" fill="${sh}" transform="rotate(-18 87 106)"/>
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
 <rect x="37" y="90" width="46" height="36" rx="17" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
+${lower}${deco}
 ${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>
 ${top}
@@ -801,29 +833,133 @@ function renderMe() {
     : '사이트를 열 때마다 위치를 확인해요');
 }
 
+// ---------- 캐릭터 만들기 ----------
+let pickKey = null;   // 직접 고르기 색상판이 열려 있는 항목
+const updatePreview = () => { $('preview').innerHTML = villagerSVG(draft.look); };
 function renderCreator() {
-  $('preview').innerHTML = villagerSVG(draft.look);
+  updatePreview();
   const opts = $('opts'); opts.replaceChildren();
-  const group = (label, key, items, swatch) => {
-    const wrap = el('div');
-    const row = el('div', 'opt-row'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', label);
+  const chips = (label, key, items) => {
+    const wrap = el('div'), row = el('div', 'opt-row');
+    row.setAttribute('role', 'group'); row.setAttribute('aria-label', label);
     items.forEach((v, i) => {
-      const b = el('button'); b.type = 'button';
+      const b = el('button', 'chip', v); b.type = 'button';
       b.setAttribute('aria-pressed', String(draft.look[key] === i));
-      if (swatch) { b.className = 'sw'; b.style.background = v; b.setAttribute('aria-label', `${label} ${i + 1}`); }
-      else { b.className = 'chip'; b.textContent = v; }
       b.addEventListener('click', () => { draft.look[key] = i; renderCreator(); });
       row.append(b);
     });
     wrap.append(el('p', 'opt-label', label), row); opts.append(wrap);
   };
-  group('피부', 'skin', PAL.skin, true);
-  group('머리 색', 'hair', PAL.hair, true);
-  group('머리 모양', 'style', STYLES, false);
-  group('윗옷', 'shirt', PAL.shirt, true);
-  group('바지', 'pants', PAL.pants, true);
-  group('소품', 'acc', ACCS, false);
+  const colors = (label, key) => {
+    const wrap = el('div'), row = el('div', 'opt-row');
+    row.setAttribute('role', 'group'); row.setAttribute('aria-label', label);
+    const cur = draft.look[key], custom = typeof cur === 'string';
+    PAL[key].forEach((c, i) => {
+      const b = el('button', 'sw'); b.type = 'button'; b.style.background = c;
+      b.setAttribute('aria-label', `${label} ${i + 1}`);
+      b.setAttribute('aria-pressed', String(cur === i));
+      b.addEventListener('click', () => { draft.look[key] = i; if (pickKey === key) pickKey = null; renderCreator(); });
+      row.append(b);
+    });
+    const cb = el('button', 'sw custom'); cb.type = 'button';
+    cb.setAttribute('aria-label', `${label} 직접 고르기`);
+    cb.setAttribute('aria-pressed', String(custom));
+    cb.setAttribute('aria-expanded', String(pickKey === key));
+    if (custom) cb.style.background = cur;
+    cb.addEventListener('click', () => {
+      if (pickKey === key) pickKey = null;
+      else { pickKey = key; if (typeof draft.look[key] !== 'string') draft.look[key] = colorOf(cleanLook(draft.look), key); }
+      renderCreator();
+    });
+    row.append(cb);
+    wrap.append(el('p', 'opt-label', label), row);
+    if (pickKey === key) wrap.append(colorPicker(draft.look[key], hex => { draft.look[key] = hex; cb.style.background = hex; updatePreview(); }));
+    opts.append(wrap);
+  };
+  colors('피부', 'skin');
+  chips('머리 모양', 'style', STYLES);
+  colors('머리 색', 'hair');
+  chips('윗옷', 'top', TOPS);
+  colors('윗옷 색', 'shirt');
+  chips('아래옷', 'bottom', BOTTOMS);
+  colors('아래옷 색', 'pants');
+  chips('소품', 'acc', ACCS);
   $('btn-cancel').hidden = !mine;
+}
+
+// ---------- 색상판 (가로: 색, 세로: 위로 갈수록 흰색, 아래 막대: 밝기) ----------
+const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+const rgb2hex = ([r, g, b]) => '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+function rgb2hsv([r, g, b]) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, mx ? d / mx : 0, mx];
+}
+function hsv2rgb(h, s, v) {
+  const f = n => { const k = (n + h / 60) % 6; return Math.round((v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255); };
+  return [f(5), f(3), f(1)];
+}
+function dragArea(node, cb) {
+  const at = e => { const r = node.getBoundingClientRect(); cb(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))); };
+  node.addEventListener('pointerdown', e => { e.preventDefault(); node.setPointerCapture(e.pointerId); node.focus({ preventScroll: true }); at(e); });
+  node.addEventListener('pointermove', e => { if (node.hasPointerCapture(e.pointerId)) at(e); });
+}
+function colorPicker(hex, onChange) {
+  let [h, s, v] = rgb2hsv(hex2rgb(hex));
+  const root = el('div', 'picker');
+  const pad = el('div', 'pk-pad'), dot = el('span', 'pk-dot');
+  pad.tabIndex = 0; pad.setAttribute('role', 'slider'); pad.setAttribute('aria-label', '색 고르기 (좌우: 색, 위아래: 진하기)');
+  pad.append(dot);
+  const bar = el('div', 'pk-bar'), knob = el('span', 'pk-knob'), pct = el('span', 'pk-pct');
+  bar.tabIndex = 0; bar.setAttribute('role', 'slider'); bar.setAttribute('aria-label', '밝기');
+  bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+  bar.append(knob);
+  const row = el('div', 'pk-row'); row.append(bar, pct);
+  const info = el('div', 'pk-info'), sw = el('span', 'pk-sw');
+  const field = (label, attrs) => { const lb = el('label'), inp = el('input'); Object.assign(inp, attrs); lb.append(el('span', '', label), inp); info.append(lb); return inp; };
+  info.append(sw);
+  const hexIn = field('색상 코드 #', { maxLength: 6, autocomplete: 'off', spellcheck: false, inputMode: 'text' });
+  const rgbIn = ['빨간색', '녹색', '파란색'].map(n => field(n, { type: 'number', min: 0, max: 255, inputMode: 'numeric' }));
+  root.append(pad, row, info);
+  function paint(from) {
+    const rgb = hsv2rgb(h, s, v), hx = rgb2hex(rgb), full = rgb2hex(hsv2rgb(h, s, 1));
+    dot.style.left = (h / 360 * 100) + '%'; dot.style.top = (s * 100) + '%'; dot.style.background = full;
+    bar.style.background = `linear-gradient(to right, #000, ${full})`;
+    knob.style.left = (v * 100) + '%'; pct.textContent = Math.round(v * 100) + '%';
+    bar.setAttribute('aria-valuenow', String(Math.round(v * 100)));
+    sw.style.background = hx;
+    if (from !== 'hex') hexIn.value = hx.slice(1).toUpperCase();
+    if (from !== 'rgb') rgb.forEach((c, i) => { rgbIn[i].value = c; });
+    if (from !== 'init') onChange(from === 'hex' || from === 'rgb' ? fromInputs : hx);
+  }
+  let fromInputs = hex;
+  dragArea(pad, (x, y) => { h = Math.min(x * 360, 359.9); s = y; paint(); });
+  dragArea(bar, x => { v = x; paint(); });
+  pad.addEventListener('keydown', e => {
+    const d = { ArrowLeft: [-4, 0], ArrowRight: [4, 0], ArrowUp: [0, -.04], ArrowDown: [0, .04] }[e.key];
+    if (!d) return; e.preventDefault();
+    h = (h + d[0] + 360) % 360; s = Math.min(1, Math.max(0, s + d[1])); paint();
+  });
+  bar.addEventListener('keydown', e => {
+    const d = { ArrowLeft: -.02, ArrowDown: -.02, ArrowRight: .02, ArrowUp: .02 }[e.key];
+    if (d == null) return; e.preventDefault();
+    v = Math.min(1, Math.max(0, v + d)); paint();
+  });
+  hexIn.addEventListener('input', () => {
+    const t = hexIn.value.replace(/[^0-9a-f]/gi, '');
+    if (t !== hexIn.value) hexIn.value = t;
+    if (t.length !== 6) return;
+    fromInputs = '#' + t.toLowerCase(); [h, s, v] = rgb2hsv(hex2rgb(fromInputs)); paint('hex');
+  });
+  rgbIn.forEach(inp => inp.addEventListener('input', () => {
+    const c = rgbIn.map(i => Number(i.value));
+    if (!c.every(n => Number.isInteger(n) && n >= 0 && n <= 255) || rgbIn.some(i => i.value === '')) return;
+    fromInputs = rgb2hex(c); [h, s, v] = rgb2hsv(c); paint('rgb');
+  }));
+  paint('init');
+  return root;
 }
 
 // ---------- 출석부 (손글씨 달력) ----------
@@ -1071,6 +1207,7 @@ function render() {
 
   const showCreate = member && loaded && (editing || !mine);
   if (showCreate && !draft) {
+    pickKey = null;
     draft = { look: mine ? { ...cleanLook(mine.look) } : randomLook(), name: mine ? mine.name : (me.name || '').split(' ')[0].slice(0, 12) };
     $('nick').value = draft.name;
   }
