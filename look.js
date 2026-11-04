@@ -15,7 +15,12 @@
   const TOPS = ['티셔츠', '후드티', '셔츠', '줄무늬', '멜빵', '니트', '체크', '하트 맨투맨', '조끼', '넥타이', '나시', '내 디자인'];
   const DESIGN_TOP = TOPS.length - 1;
   // 내 디자인 옷 형태
-  const FORMS = ['반팔 셔츠', '맨투맨', '원피스', '로브', '민소매'];
+  const FORMS = ['반팔 셔츠', '맨투맨', '원피스', '로브', '민소매', '긴팔 원피스'];
+  // 내 모자: 몸통(32×32, 머리를 빙 둘러요) · 챙/접단(32×32)
+  const HFORMS = ['캡모자', '비니', '버킷햇'];
+  const HPARTS = { crown: [0, 32], brim: [1024, 32] };
+  const HLEN = 2048;
+  const HPAL = ['#f3ead6', '#2b2b2b', '#d9383a', '#f4bd4f', '#2f56a6', '#7cc79a', '#fffdf6', '#57779a', '#f0dc8a', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a', '#f28b82', '#3f9a68'];
   // 내 디자인: 칸마다 0(비어 있음 = 윗옷 색) 또는 물감 1~15번. dsg는 칸을 16진수 한 글자씩 이은 문자열
   // 순서: 앞(64×64) · 뒤(64×64) · 왼소매(32×32) · 오른소매(32×32) = 10240칸
   // 예전 형식(앞 32×32만 1024칸, 또는 32·32·16·16 = 2560칸)은 2배로 늘려서 읽어요
@@ -25,7 +30,10 @@
   const OLD = { front: [0, 32], back: [1024, 32], left: [2048, 16], right: [2304, 16] };
   const DPAL = ['#ffffff', '#2b2b2b', '#d9383a', '#f28b82', '#ff9f68', '#f4bd4f', '#fff07a', '#7cc79a', '#3f9a68', '#7fb3e0', '#2f56a6', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a'];
   const BOTTOMS = ['긴바지', '반바지', '치마', '롱스커트', '7부바지'];
-  const ACCS = ['없음', '나뭇잎', '리본', '안경', '캡모자', '비니', '머리띠', '꽃', '선글라스', '마스크'];
+  const ACCS = ['없음', '나뭇잎', '리본', '안경', '캡모자', '비니', '머리띠', '꽃', '선글라스', '마스크', '내 모자'];
+  const HAT_ACC = ACCS.length - 1;
+  const TEXS = ['매끈', '약하게', '보통', '강하게'];          // 옷 질감 (주름·그림자·직물 결의 세기)
+  const TEX_K = [0, .5, 1, 1.7];
   const COLOR_KEYS = ['skin', 'hair', 'shirt', 'pants'];
   const LIMIT = {
     skin: PAL.skin.length, hair: PAL.hair.length, style: STYLES.length, shirt: PAL.shirt.length,
@@ -42,11 +50,17 @@
     }
     return out.join('');
   }
+  const cleanHdsg = d => typeof d === 'string' && d.length === HLEN && DSG.test(d) ? d : '';
+  const cleanPal = (p, def) => Array.isArray(p) && p.length === def.length && p.every(c => typeof c === 'string' && HEX.test(c.toLowerCase())) ? p.map(c => c.toLowerCase()) : def.slice();
   const cleanDsg = d => typeof d === 'string' && DSG.test(d) ? (d.length === DLEN ? d : d.length === 1024 || d.length === 2560 ? upscale(d) : '') : '';
   function cleanLook(l) {
     const o = {};
     o.dsg = cleanDsg(l && l.dsg);
     o.dform = l && Number.isInteger(l.dform) && l.dform >= 0 && l.dform < FORMS.length ? l.dform : 1;
+    o.hdsg = cleanHdsg(l && l.hdsg);
+    o.hpal = cleanPal(l && l.hpal, HPAL);
+    o.hform = l && Number.isInteger(l.hform) && l.hform >= 0 && l.hform < HFORMS.length ? l.hform : 0;
+    o.tex = l && Number.isInteger(l.tex) && l.tex >= 0 && l.tex < TEXS.length ? l.tex : 2;
     o.dpal = l && Array.isArray(l.dpal) && l.dpal.length === DPAL.length && l.dpal.every(c => typeof c === 'string' && HEX.test(c.toLowerCase()))
       ? l.dpal.map(c => c.toLowerCase()) : DPAL.slice();
     for (const k in LIMIT) {
@@ -76,7 +90,7 @@
   function designCanvas(dsg, dpal, part = 'front') {
     const key = part + dsg + dpal.join();
     if (dcache.has(key)) return dcache.get(key);
-    const [off, n] = PARTS[part];
+    const [off, n] = PARTS[part] || HPARTS[part];
     const c = document.createElement('canvas'); c.width = c.height = n;
     const g = c.getContext('2d');
     for (let i = 0; i < n * n; i++) {
@@ -88,9 +102,9 @@
     return c;
   }
   // ---------- 기본 옷장 디자인 ----------
-  function paintParts(f) {   // f(part, x, y, n) → 0~15
-    const out = Array(DLEN).fill(0);
-    for (const p in PARTS) { const [off, n] = PARTS[p]; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) out[off + y * n + x] = f(p, x, y, n) || 0; }
+  function paintParts(f, parts = PARTS, len = DLEN) {   // f(part, x, y, n) → 0~15
+    const out = Array(len).fill(0);
+    for (const p in parts) { const [off, n] = parts[p]; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) out[off + y * n + x] = f(p, x, y, n) || 0; }
     return out.map(v => v.toString(16)).join('');
   }
   // 로브: 검은 겉옷(앞섶·소매 안쪽 파란 안감) 안에 브이넥 니트 조끼, 흰 셔츠 깃, 대각선 줄무늬 넥타이, 주름 치마
@@ -141,7 +155,71 @@
       if (y < 44) return 4;                                    // 조끼 (단색)
       return x % 8 === 0 ? 11 : 2;                             // 주름 치마
     }) };
+  // 별 모양 안에 있는지 (중심 cx, cy, 바깥 반지름 R): 꼭짓점 10개짜리 다각형 안쪽 판정
+  function inStar(x, y, cx, cy, R, sx = 1) {   // sx > 1 이면 가로 칸 수를 줄여 그려요 (가로로 긴 칸에서도 별이 동그랗게)
+    const px = cx + (x + .5 - cx) * sx, py = y + .5, pts = [];
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * .45 : R; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+    let inside = false;
+    for (let i = 0, j = 9; i < 10; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  // 별무늬 멜빵 원피스: 크림·노랑 줄무늬 긴팔 셔츠 위에 데님 멜빵 원피스, 노란 별 패치, 노란 단추와 박음질, 주머니
+  const STAR_DRESS = { name: '별무늬 멜빵 원피스', kind: 'top', dform: 5,
+    dpal: ['#f7efd2', '#ead27a', '#4f6f92', '#3e5878', '#6f8db0', '#f4cf5a', '#d9b44a', '#2f455e', '#fffaea', '#8aa6c4', '#c9a77c', '#2b2b2b', '#e9dfc2', '#b9c8d8', '#9a9a9a'],
+    dsg: paintParts((p, x, y, n) => {
+      const c = Math.abs(x - (n - 1) / 2);
+      const shirt = (xx, yy) => (Math.floor(xx / 3) % 2 ? 2 : 1);            // 세로 줄무늬 셔츠
+      if (p === 'left' || p === 'right') return y >= 27 ? (y === 27 ? 13 : 1) : shirt(x, y);
+      // 데님 바탕 (얼룩 약간)
+      const wash = (xx, yy) => ((xx * 7 + yy * 13) % 23 === 0 || (xx * 5 + yy * 11) % 31 === 0) ? 5 : ((xx + yy * 3) % 17 === 0 ? 4 : 3);
+      const stars = p === 'front' ? [[31.5, 21, 6], [15, 43, 4.6], [48, 39, 3.8], [40, 56, 4.8], [19, 57, 3.4], [53, 55, 3.2]]
+                                  : [[20, 40, 4.6], [44, 46, 5], [31, 57, 3.6], [11, 54, 3.2], [53, 35, 3.2]];
+      if (y >= 30) {                                                       // 치마 부분
+        if (y === 30 || y === 31) return 4;                                // 허리 이음선
+        if (y === 32 && x % 3 === 0) return 6;                             // 노란 박음질
+        for (const [sx, sy, R] of stars) if (inStar(x, y, sx, sy, R)) return 6;
+        if (p === 'front' && y >= 38 && y <= 48 && x >= 25 && x <= 38) {   // 주머니
+          if (y === 38 || x === 25 || x === 38 || y === 48) return 4;
+          if (y === 39 && x % 2) return 7;
+        }
+        return wash(x, y);
+      }
+      // 위: 셔츠가 보이고, 가운데 멜빵 가슴판 + 어깨끈
+      const strapL = Math.abs(x - (15 + y * .18)) < 3, strapR = Math.abs(x - (48 - y * .18)) < 3;
+      if (p === 'front') {
+        if (y < 6 && c < 9) return (c > 8 - y || y > 4) ? 13 : 9;          // 셔츠 깃
+        if (y >= 10 && c < 12) {                                           // 가슴판
+          if (y === 10 || c > 11) return 4;
+          if (y === 11 && x % 3 === 0) return 7;
+          for (const [sx, sy, R] of stars) if (inStar(x, y, sx, sy, R)) return 6;
+          return wash(x, y);
+        }
+        if (strapL || strapR) { if (y >= 8 && y <= 10 && Math.abs(x - (strapL ? 15 + y * .18 : 48 - y * .18)) < 1.6) return 6; return 4; }   // 어깨끈 + 단추
+        return shirt(x, y);
+      }
+      // 뒤: 엑스자로 엇갈린 어깨끈
+      if (y >= 22 && c < 13) return y === 22 ? 4 : wash(x, y);
+      if (Math.abs(x - (18 + y * .62)) < 2.6 || Math.abs(x - (45 - y * .62)) < 2.6) return 4;
+      return shirt(x, y);
+    }) };
+  // 별 캡모자: 크림 앞판에 노란 별, 데님 뒤판, 노랑 줄무늬 챙
+  const STAR_CAP = { name: '별 캡모자', kind: 'hat', hform: 0,
+    hpal: ['#f3ead6', '#5d7ea2', '#4a6788', '#f4cf5a', '#d9b44a', '#f0dc8a', '#fbf3d0', '#e4d9bf', '#2b2b2b', '#b39ddb', '#8a5a35', '#c9a77c', '#9a9a9a', '#f28b82', '#3f9a68'],
+    hdsg: paintParts((p, x, y, n) => {
+      if (p === 'brim') return Math.floor(x / 2) % 2 ? 6 : 7;              // 챙: 노랑·크림 세로 줄무늬
+      const front = x >= 7 && x <= 24;
+      if (front) {
+        if (x === 7 || x === 24) return 8;                                 // 앞판 이음선
+        if (inStar(x, y, 16, 15, 9, 2)) return y > 17 ? 5 : 4;              // 노란 별
+        return 1;
+      }
+      if (y < 2 && (x === 0 || x === 31)) return 3;
+      return (x * 3 + y * 7) % 19 === 0 ? 3 : 2;                           // 데님 뒤판
+    }, HPARTS, HLEN) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', ...ROBE }] };
-  window.AZIT_LOOK = { FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress', ...STAR_DRESS }, { id: 'gift-stargazer-cap-2', ...STAR_CAP }] };
+  window.AZIT_LOOK = { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();

@@ -68,7 +68,8 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .dz{display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:10px; align-items:start}
 @media (max-width:420px){.dz{grid-template-columns:minmax(0,1fr) 70px}}
 .dz-board{border-radius:10px; border:2px solid var(--line); overflow:hidden; aspect-ratio:1; position:relative}
-#dz-canvas{width:100%; height:auto; aspect-ratio:1; display:block; touch-action:none; cursor:crosshair; image-rendering:pixelated}
+.dz-board.wide{aspect-ratio:2}
+#dz-canvas{width:100%; height:auto; display:block; touch-action:none; cursor:crosshair; image-rendering:pixelated}
 .dz-board.z2 #dz-canvas{width:200%}
 .dz-board.pan #dz-canvas{cursor:grab}
 .dz-side{display:flex; flex-direction:column; gap:8px}
@@ -76,6 +77,8 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .dz-flat{display:grid; grid-template-columns:1fr 1fr; gap:3px; background:#f3e7d2; border-radius:10px; padding:4px}
 .dz-flat canvas{width:100%; height:auto; aspect-ratio:1; image-rendering:pixelated; border-radius:3px; display:block}
 .dz-sep{width:1px; height:22px; background:var(--line)}
+.dz-kind .tab{font-size:1.05rem}
+.closet-list .kd{font-size:.68rem; color:var(--muted)}
 .dz-parts{display:flex; flex-wrap:wrap; gap:4px; background:rgba(243,231,210,.8); border-radius:14px; padding:3px}
 .dz-parts .tab{flex:1}
 .closet{display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:12px}
@@ -424,8 +427,9 @@ textarea:focus-visible{outline:3px solid var(--tag); outline-offset:2px}
 <div class="modal" id="m-design" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-design">
     <div class="sheet-head"><h2 id="h-design">옷 디자인</h2><button class="ghost small" data-close="m-design">닫기</button></div>
-    <p class="note">앞·뒤·양쪽 소매를 따로 그려요. 비워 둔 칸은 윗옷 색으로 보여요. 물감을 고른 뒤 "색 바꾸기"로 원하는 색을 만들 수 있어요.</p>
-    <div class="dz-tools" id="dz-forms" role="group" aria-label="옷 형태"></div>
+    <nav class="dz-parts dz-kind" id="dz-kind" aria-label="디자인 종류"></nav>
+    <p class="note" id="dz-note"></p>
+    <div class="dz-tools" id="dz-forms" role="group" aria-label="형태"></div>
     <div class="dz-parts" id="dz-parts"></div>
     <div class="dz">
       <div class="dz-board" id="dz-board"><canvas id="dz-canvas" width="768" height="768" aria-label="옷 디자인 판"></canvas></div>
@@ -583,7 +587,7 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+const { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, cleanHdsg, FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
 const HAIR_TOP = [
   hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
   hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
@@ -629,9 +633,13 @@ let svgN = 0;
 // 윗옷 몸판: 어깨는 둥글게, 밑단은 살짝 퍼지게
 const TORSO = 'M45 90 Q60 87 75 90 Q84 93 84 104 L86 121 Q87 128 80 128 L40 128 Q33 128 34 121 L36 104 Q36 93 45 90Z';
 const designURLs = new Map();
-function designURL(l, part = 'front') {
+function designURL(l, part = 'front', wrap = false) {
   const key = part + l.dsg + l.dpal.join();
-  if (!designURLs.has(key)) { if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value); designURLs.set(key, designCanvas(l.dsg, l.dpal, part).toDataURL()); }
+  if (!designURLs.has(key)) {
+    if (designURLs.size > 120) designURLs.delete(designURLs.keys().next().value);
+    let c = designCanvas(l.dsg, l.dpal, part);
+    designURLs.set(key, c.toDataURL());
+  }
   return designURLs.get(key);
 }
 // 팔(소매) 위에 소매 디자인. 화면 왼쪽 팔 = 캐릭터의 오른소매
@@ -647,16 +655,29 @@ const FORM2D = [
   { torso: 'M44 90 Q60 86 76 90 Q85 93 86 104 L94 139 Q95 145 88 145 L32 145 Q25 145 26 139 L34 104 Q35 93 44 90Z', box: [25, 88, 70, 58],
     sleeve: { right: ['M28 94 Q34 90 39 96 L45 117 Q34 124 21 118 Z', [20, 91, 26, 33]], left: ['M92 94 Q86 90 81 96 L75 117 Q86 124 99 118 Z', [74, 91, 26, 33]] } },
   { torso: TORSO, box: [33, 88, 54, 41], sleeve: null },
+  { torso: 'M45 90 Q60 87 75 90 Q84 93 84 104 L91 137 Q92 143 85 143 L35 143 Q28 143 29 137 L36 104 Q36 93 45 90Z', box: [28, 88, 64, 56],
+    sleeve: { right: [SLEEVE.right, [25, 91, 17, 29]], left: [SLEEVE.left, [78, 91, 17, 29]] } },
 ];
 // 옷 명암: 가장자리는 살짝 어둡게, 위는 살짝 밝게, 밑단엔 주름 선
-const clothShade = (uid, d, hem) => `<defs><linearGradient id="${uid}h" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".28" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>
-<linearGradient id="${uid}w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".1"/></linearGradient></defs>
+const clothShade = (uid, d, hem, k = 1) => `<defs><linearGradient id="${uid}h" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="${(.16 * k).toFixed(3)}"/><stop offset=".28" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${(.18 * k).toFixed(3)}"/></linearGradient>
+<linearGradient id="${uid}w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${(.16 * k).toFixed(3)}"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${(.1 * k).toFixed(3)}"/></linearGradient></defs>
 <path d="${d}" fill="url(#${uid}h)"/><path d="${d}" fill="url(#${uid}w)"/>
-<path d="M45 ${hem - 10} q1.5 5 .5 9 M60 ${hem - 8} q-1 4 0 7 M75 ${hem - 10} q-1.5 5 -.5 9" stroke="#000" stroke-opacity=".09" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+${k ? `<path d="M45 ${hem - 10} q1.5 5 .5 9 M60 ${hem - 8} q-1 4 0 7 M75 ${hem - 10} q-1.5 5 -.5 9" stroke="#000" stroke-opacity="${(.09 * k).toFixed(3)}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : ''}`;
 const sleeveSVG = (l, uid, sh) => FORM2D[l.dform].sleeve ? [[33, 10, 'right'], [87, -10, 'left']].map(([cx, r, part]) => {
   const [d, [x, y, w, h]] = FORM2D[l.dform].sleeve[part];
   return `<g transform="rotate(${r} ${cx} 106)"><path d="${d}" fill="${sh}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${designURL(l, part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/><path d="${d}" fill="url(#${uid}h)"/></g>`;
 }).join('') : '';
+// 내 모자 2D: [몸통 모양, 무늬 자리], [챙/접단 모양, 무늬 자리]
+const HAT2D = [
+  { crown: ['M23 50 Q23 16 60 16 Q97 16 97 50 Z', [23, 16, 74, 34]], brim: ['M44 50 Q76 44 99 52 Q78 58 44 54 Z', [44, 44, 56, 14]], top: true },
+  { crown: ['M21 54 Q21 14 60 14 Q99 14 99 54 Z', [21, 14, 78, 40]], brim: ['M20 50 Q20 45 25 45 L95 45 Q100 45 100 50 Q100 56 95 56 L25 56 Q20 56 20 50Z', [20, 45, 80, 11]] },
+  { crown: ['M28 47 Q28 17 60 17 Q92 17 92 47 Z', [28, 17, 64, 30]], brim: ['M13 51 Q60 36 107 51 Q109 57 101 57 Q60 46 19 57 Q11 57 13 51Z', [12, 38, 96, 19]] },
+];
+function hatSVG(l, uid) {
+  const H = HAT2D[l.hform], url = p => designURL({ dsg: l.hdsg, dpal: l.hpal }, p, true);
+  const piece = (part, [d, [x, y, w, h]]) => `<path d="${d}" fill="${l.hpal[0]}"/><clipPath id="${uid}${part}"><path d="${d}"/></clipPath><image href="${url(part)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" clip-path="url(#${uid}${part})" style="image-rendering:pixelated"/><path d="${d}" fill="url(#${uid}h)"/>`;
+  return piece('crown', H.crown) + piece('brim', H.brim) + (l.hform === 1 ? `<circle cx="60" cy="12" r="7" fill="${l.hpal[6]}"/>` : '');
+}
 function villagerSVG(look) {
   const l = cleanLook(look), uid = 'v' + (++svgN);
   const sk = colorOf(l, 'skin'), hr = colorOf(l, 'hair'), sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants');
@@ -756,7 +777,7 @@ function villagerSVG(look) {
     `<g fill="#fffdf6">${[0, 72, 144, 216, 288].map(a => `<circle cx="${(84 + Math.cos(a * Math.PI / 180) * 4.5).toFixed(1)}" cy="${(34 + Math.sin(a * Math.PI / 180) * 4.5).toFixed(1)}" r="3.8"/>`).join('')}</g><circle cx="84" cy="34" r="2.6" fill="#f4bd4f"/>`,
     `<g fill="#1d1d20"><rect x="37" y="57" width="20" height="13" rx="6"/><rect x="63" y="57" width="20" height="13" rx="6"/></g><path d="M56 61 H64" stroke="#1d1d20" stroke-width="2.2"/><path d="M41 60 L46 59" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>`,
     `<rect x="44" y="70" width="32" height="17" rx="7" fill="#fffdf6" stroke="rgba(75,58,42,.25)"/><path d="M44 74 L28 68 M76 74 L92 68" stroke="#e9e1cf" stroke-width="1.4"/><path d="M50 77 H70 M50 81 H70" stroke="rgba(75,58,42,.15)" stroke-width="1"/>`,
-  ][l.acc];
+  ][l.acc] || (l.acc === HAT_ACC && l.hdsg ? hatSVG(l, uid) : '');
   return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
@@ -765,8 +786,8 @@ ${isD ? `<ellipse cx="33" cy="106" rx="5.5" ry="12" fill="${sk}" transform="rota
   : `<g transform="rotate(10 33 106)"><path d="${SLEEVE.right}" fill="${armC}"/><path d="${SLEEVE.right}" fill="url(#${uid}h)"/></g><g transform="rotate(-10 87 106)"><path d="${SLEEVE.left}" fill="${armC}"/><path d="${SLEEVE.left}" fill="url(#${uid}h)"/></g>`}
 <circle cx="30" cy="118" r="5.5" fill="${sk}"/><circle cx="90" cy="118" r="5.5" fill="${sk}"/>
 <path d="${isD ? FORM2D[l.dform].torso : TORSO}" fill="${sh}" stroke="rgba(75,58,42,.12)"/>
-${isD && l.dform >= 2 && l.dform <= 3 ? '' : lower}${deco}
-${clothShade(uid, isD ? FORM2D[l.dform].torso : TORSO, isD ? [128, 128, 143, 145, 128][l.dform] : 128)}
+${isD && (l.dform === 2 || l.dform === 3 || l.dform === 5) ? '' : lower}${deco}
+${clothShade(uid, isD ? FORM2D[l.dform].torso : TORSO, isD ? [128, 128, 143, 145, 128, 143][l.dform] : 128, TEX_K[l.tex])}
 ${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>
 ${top}
@@ -1109,6 +1130,7 @@ function renderCreator() {
   chips('아래옷', 'bottom', BOTTOMS);
   colors('아래옷 색', 'pants');
   chips('소품', 'acc', ACCS);
+  chips('옷 질감', 'tex', TEXS);
   $('btn-cancel').hidden = !mine;
 }
 
@@ -1188,26 +1210,46 @@ function colorPicker(hex, onChange) {
 }
 
 // ---------- 옷 디자인 ----------
-const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매' };
-let dz = null;   // { d: 칸 10240개(0~15), pal, part, tool, cur, size, zoom, mirror, both, hist, base, pick }
+const PART_NAMES = { front: '앞', back: '뒤', left: '왼소매', right: '오른소매', crown: '모자 몸통', brim: '챙·접단' };
+const KIND_PARTS = { top: ['front', 'back', 'left', 'right'], hat: ['crown', 'brim'] };
+const PT = p => PARTS[p] || HPARTS[p];
+const HAT_BG = '#efe6d6';
+// dz.T.top / dz.T.hat: 옷·모자 각각의 칸(d), 물감(pal), 형태(form), 고른 면(part). dz.k가 지금 고친 쪽
+// dz.d / dz.pal / dz.form / dz.part 는 지금 고치는 쪽을 가리켜요
+let dz = null;
 let closet = null;
 function openDesigner() {
   if (!mine) return;
   const l = cleanLook(mine.look);
-  dz = { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front', tool: 'pen', cur: 2, size: 1, zoom: 1,
-    mirror: false, both: true, hist: [], base: l, pick: false };
+  const T = {
+    top: { d: (l.dsg || '0'.repeat(DLEN)).split('').map(c => parseInt(c, 16)), pal: l.dpal.slice(), form: l.dform, part: 'front' },
+    hat: { d: (l.hdsg || '0'.repeat(HLEN)).split('').map(c => parseInt(c, 16)), pal: l.hpal.slice(), form: l.hform, part: 'crown' },
+  };
+  dz = { T, k: 'top', tool: 'pen', cur: 2, size: 1, zoom: 1, mirror: false, both: true, hist: [], base: l, pick: false };
+  for (const p of ['d', 'pal', 'form', 'part']) Object.defineProperty(dz, p, { get() { return dz.T[dz.k][p]; }, set(v) { dz.T[dz.k][p] = v; } });
   closeModal('m-me');
   renderDesigner(); openModal('m-design');
   loadCloset();
 }
-const dzStr = () => dz.d.map(n => n.toString(16)).join('');
-const dzLook = () => ({ ...dz.base, top: DESIGN_TOP, dsg: dzStr(), dpal: dz.pal.slice(), dform: dz.form });
+const tStr = k => dz.T[k].d.map(n => n.toString(16)).join('');
+const dzStr = () => tStr(dz.k);
+const inked = d => /[1-9a-f]/.test(d);
+// 미리보기·입어 보기: 옷과 모자 디자인을 같이 담아요. 지금 고치는 쪽은 바로 입혀 보여요
+function dzLook() {
+  const top = tStr('top'), hat = tStr('hat');
+  return { ...dz.base, dsg: inked(top) ? top : '', dpal: dz.T.top.pal.slice(), dform: dz.T.top.form,
+    hdsg: inked(hat) ? hat : '', hpal: dz.T.hat.pal.slice(), hform: dz.T.hat.form,
+    top: dz.k === 'top' ? DESIGN_TOP : dz.base.top, acc: dz.k === 'hat' ? HAT_ACC : dz.base.acc };
+}
 function drawBoard() {
-  const cv = $('dz-canvas'), g = cv.getContext('2d'), [off, n] = PARTS[dz.part], c = cv.width / n;
-  g.fillStyle = colorOf(dz.base, 'shirt'); g.fillRect(0, 0, cv.width, cv.height);
-  for (let i = 0; i < n * n; i++) { const v = dz.d[off + i]; if (v) { g.fillStyle = dz.pal[v - 1]; g.fillRect((i % n) * c, Math.floor(i / n) * c, c, c); } }
+  // 모자 몸통은 실제 모자처럼 가로로 긴 판(2:1)으로 보여요
+  const cv = $('dz-canvas'), [off, n] = PT(dz.part), H = dz.part === 'crown' ? 384 : 768;
+  if (cv.height !== H) cv.height = H;
+  const g = cv.getContext('2d'), cw = cv.width / n, ch = cv.height / n;
+  g.fillStyle = dz.k === 'hat' ? HAT_BG : colorOf(dz.base, 'shirt'); g.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < n * n; i++) { const v = dz.d[off + i]; if (v) { g.fillStyle = dz.pal[v - 1]; g.fillRect((i % n) * cw, Math.floor(i / n) * ch, cw, ch); } }
   g.strokeStyle = n > 32 ? 'rgba(60,40,20,.09)' : 'rgba(60,40,20,.13)'; g.lineWidth = 1; g.beginPath();
-  for (let k = 1; k < n; k++) { g.moveTo(Math.round(k * c) + .5, 0); g.lineTo(Math.round(k * c) + .5, cv.height); g.moveTo(0, Math.round(k * c) + .5); g.lineTo(cv.width, Math.round(k * c) + .5); }
+  for (let k = 1; k < n; k++) { g.moveTo(Math.round(k * cw) + .5, 0); g.lineTo(Math.round(k * cw) + .5, cv.height); g.moveTo(0, Math.round(k * ch) + .5); g.lineTo(cv.width, Math.round(k * ch) + .5); }
   g.stroke();
   g.strokeStyle = 'rgba(60,40,20,.35)'; g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
 }
@@ -1225,30 +1267,40 @@ function dzRefresh() {
     drawBoard();
     const look = dzLook();
     $('dz-prev').innerHTML = villagerSVG(look);
-    const bg = colorOf(dz.base, 'shirt');
-    $('dz-flat').replaceChildren(...['front', 'back', 'right', 'left'].map(p => { const c = partCanvas(look.dsg, look.dpal, p, bg); c.title = PART_NAMES[p]; return c; }));
+    const bg = dz.k === 'hat' ? HAT_BG : colorOf(dz.base, 'shirt'), cur = dzStr();
+    $('dz-flat').replaceChildren(...(dz.k === 'hat' ? ['crown', 'brim'] : ['front', 'back', 'right', 'left']).map(p => { const c = partCanvas(cur, dz.pal, p, bg); c.title = PART_NAMES[p]; return c; }));
   });
 }
 function renderDesigner() {
   dzRefresh();
+  const kind = $('dz-kind'); kind.replaceChildren();
+  for (const [k, lb] of [['top', '옷'], ['hat', '모자']]) {
+    const b = el('button', 'tab', lb); b.type = 'button'; b.setAttribute('aria-current', dz.k === k ? 'page' : 'false');
+    b.addEventListener('click', () => { if (dz.k !== k) { dz.k = k; dz.hist = []; dz.pick = false; $('dz-name').value = ''; renderDesigner(); renderCloset(); } });
+    kind.append(b);
+  }
+  $('h-design').textContent = dz.k === 'hat' ? '모자 디자인' : '옷 디자인';
+  $('dz-note').textContent = dz.k === 'hat'
+    ? '모자 몸통은 앞에서 본 모양으로 그려요(뒤는 거울처럼 이어져요). 챙·접단은 캡모자 챙, 비니 접단, 버킷햇 챙이 돼요. 물감은 "색 바꾸기"로 바꿀 수 있어요.'
+    : '앞·뒤·양쪽 소매를 따로 그려요. 비워 둔 칸은 윗옷 색으로 보여요. 물감을 고른 뒤 "색 바꾸기"로 원하는 색을 만들 수 있어요.';
   const forms = $('dz-forms'); forms.replaceChildren(el('span', 'opt-label', '형태'));
-  FORMS.forEach((f, i) => {
+  (dz.k === 'hat' ? HFORMS : FORMS).forEach((f, i) => {
     const b = el('button', 'chip', f); b.type = 'button'; b.setAttribute('aria-pressed', String(dz.form === i));
-    b.addEventListener('click', () => { dz.form = i; if (i === 4 && (dz.part === 'left' || dz.part === 'right')) dz.part = 'front'; renderDesigner(); });
+    b.addEventListener('click', () => { dz.form = i; if (dz.k === 'top' && i === 4 && (dz.part === 'left' || dz.part === 'right')) dz.part = 'front'; renderDesigner(); });
     forms.append(b);
   });
   const parts = $('dz-parts'); parts.replaceChildren();
-  for (const p in PART_NAMES) {
-    if (dz.form === 4 && (p === 'left' || p === 'right')) continue;   // 민소매는 소매가 없어요
+  for (const p of KIND_PARTS[dz.k]) {
+    if (dz.k === 'top' && dz.form === 4 && (p === 'left' || p === 'right')) continue;   // 민소매는 소매가 없어요
     const b = el('button', 'tab', PART_NAMES[p]); b.type = 'button';
     b.setAttribute('aria-current', dz.part === p ? 'page' : 'false');
     b.addEventListener('click', () => { dz.part = p; renderDesigner(); });
     parts.append(b);
   }
   const board = $('dz-board');
-  board.classList.toggle('z2', dz.zoom === 2); board.classList.toggle('pan', dz.tool === 'pan');
+  board.classList.toggle('z2', dz.zoom === 2); board.classList.toggle('pan', dz.tool === 'pan'); board.classList.toggle('wide', dz.part === 'crown');
   if (dz.zoom === 1) { board.scrollLeft = 0; board.scrollTop = 0; }
-  $('dz-canvas').setAttribute('aria-label', `옷 디자인 판 · ${PART_NAMES[dz.part]} (${PARTS[dz.part][1]}×${PARTS[dz.part][1]})`);
+  $('dz-canvas').setAttribute('aria-label', `옷 디자인 판 · ${PART_NAMES[dz.part]} (${PT(dz.part)[1]}×${PT(dz.part)[1]})`);
   const tools = $('dz-tools'); tools.replaceChildren();
   const tool = (label, on, fn) => { const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(on)); b.addEventListener('click', fn); tools.append(b); };
   tool('펜', dz.tool === 'pen', () => { dz.tool = 'pen'; renderDesigner(); });
@@ -1285,7 +1337,7 @@ function renderDesigner() {
 }
 const otherSleeve = p => p === 'left' ? 'right' : p === 'right' ? 'left' : null;
 function dzSet(part, x, y, v) {
-  const [off, n] = PARTS[part], r = dz.size - 1, a = -Math.floor(r / 2), b = a + r;
+  const [off, n] = PT(part), r = dz.size - 1, a = -Math.floor(r / 2), b = a + r;
   for (let yy = y + a; yy <= y + b; yy++) for (let xx = x + a; xx <= x + b; xx++) {
     if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
     dz.d[off + yy * n + xx] = v;
@@ -1293,7 +1345,7 @@ function dzSet(part, x, y, v) {
   }
 }
 function dzFill(part, x, y, v) {
-  const [off, n] = PARTS[part], from = dz.d[off + y * n + x]; if (from === v) return;
+  const [off, n] = PT(part), from = dz.d[off + y * n + x]; if (from === v) return;
   const st = [[x, y]];
   while (st.length) {
     const [a, b] = st.pop();
@@ -1305,9 +1357,9 @@ function dzFill(part, x, y, v) {
 {
   const cv = $('dz-canvas');
   let last = null;
-  const cell = e => { const r = cv.getBoundingClientRect(), n = PARTS[dz.part][1]; return [Math.floor((e.clientX - r.left) / r.width * n), Math.floor((e.clientY - r.top) / r.height * n)]; };
+  const cell = e => { const r = cv.getBoundingClientRect(), n = PT(dz.part)[1]; return [Math.floor((e.clientX - r.left) / r.width * n), Math.floor((e.clientY - r.top) / r.height * n)]; };
   const paint = (x, y) => {
-    const n = PARTS[dz.part][1];
+    const n = PT(dz.part)[1];
     if (x < 0 || y < 0 || x >= n || y >= n) return;
     const v = dz.tool === 'eraser' ? 0 : dz.cur, twin = dz.both && otherSleeve(dz.part);
     for (const part of twin ? [dz.part, twin] : [dz.part]) {
@@ -1341,19 +1393,23 @@ function dzFill(part, x, y, v) {
 }
 $('dz-clear').addEventListener('click', () => {
   dz.hist.push(dz.d.slice());
-  const [off, n] = PARTS[dz.part]; dz.d.fill(0, off, off + n * n);
+  const [off, n] = PT(dz.part); dz.d.fill(0, off, off + n * n);
   renderDesigner();
 });
 $('dz-save').addEventListener('click', async () => {
   if (!dz) return;
   const look = cleanLook(dzLook());
-  if (!/[1-9a-f]/.test(look.dsg)) look.dsg = '';
-  if (await write({ look })) { toast('새 옷을 입었어요!'); closeModal('m-design'); dz = null; }
+  if (await write({ look })) { toast(dz.k === 'hat' ? '새 모자를 썼어요!' : '새 옷을 입었어요!'); closeModal('m-design'); dz = null; }
 });
 $('btn-design').addEventListener('click', openDesigner);
 
 // ---------- 내 옷장 (closets/{uid}: 나만 보는 디자인 목록, 최대 30벌) ----------
 const CLOSET_MAX = 30;
+// 옷장 한 벌: kind('top' 옷 / 'hat' 모자), dsg(칸), dpal(물감), dform(형태)
+const itemOf = (kind, dsg, pal, form, extra = {}) => ({ id: rid(), kind, dsg, dpal: pal.slice(), dform: form, at: Date.now(), ...extra });
+const itemDsg = it => it.kind === 'hat' ? cleanHdsg(it.hdsg || it.dsg) : cleanDsg(it.dsg);
+const itemPal = it => it.kind === 'hat' ? cleanLook({ hpal: it.hpal || it.dpal }).hpal : cleanLook({ dpal: it.dpal }).dpal;
+const itemForm = it => it.kind === 'hat' ? cleanLook({ hform: it.hform ?? it.dform }).hform : cleanLook({ dform: it.dform }).dform;
 async function loadCloset() {
   closet = null; renderCloset();
   try {
@@ -1361,11 +1417,11 @@ async function loadCloset() {
     let items = Array.isArray(data && data.items) ? data.items : [], gifts = Array.isArray(data && data.gifts) ? data.gifts : [];
     const mineGifts = (GIFTS[(me.email || '').toLowerCase()] || []).filter(g => !gifts.includes(g.id));
     if (mineGifts.length) {     // 처음 한 번만 옷장에 넣어 줘요
-      items = [...mineGifts.map(g => ({ id: g.id, name: g.name, dsg: g.dsg, dpal: g.dpal.slice(), dform: g.dform, at: Date.now() })), ...items].slice(0, CLOSET_MAX);
+      items = [...mineGifts.map(g => itemOf(g.kind || 'top', g.kind === 'hat' ? g.hdsg : g.dsg, g.kind === 'hat' ? g.hpal : g.dpal, g.kind === 'hat' ? g.hform : g.dform, { id: g.id, name: g.name })), ...items].slice(0, CLOSET_MAX);
       gifts = [...gifts, ...mineGifts.map(g => g.id)];
       await store.saveCloset(me.uid, { items, gifts });
     }
-    closet = { items: items.filter(it => it && cleanDsg(it.dsg)), gifts };
+    closet = { items: items.filter(it => it && (it.kind === 'hat' ? cleanHdsg(it.hdsg || it.dsg) : cleanDsg(it.dsg))), gifts };
   } catch (e) { closet = { items: [], gifts: [], error: true }; }
   renderCloset();
 }
@@ -1377,15 +1433,15 @@ function renderCloset() {
   $('closet-empty').hidden = !!(closet && closet.items.length);
   $('dz-store').disabled = !closet || closet.error;
   if (!closet || !dz) return;
-  const bg = colorOf(dz.base, 'shirt');
   for (const it of closet.items) {
     const li = el('li'), b = el('button', 'load'); b.type = 'button';
-    const pal = cleanLook({ dpal: it.dpal }).dpal;
-    b.append(partCanvas(cleanDsg(it.dsg), pal, 'front', bg), el('span', 'cn', it.name || '이름 없음'));
+    const hat = it.kind === 'hat', pal = itemPal(it), dsg = itemDsg(it);
+    b.append(partCanvas(dsg, pal, hat ? 'crown' : 'front', hat ? HAT_BG : colorOf(dz.base, 'shirt')), el('span', 'cn', it.name || '이름 없음'), el('span', 'kd', hat ? '모자' : '옷'));
     b.setAttribute('aria-label', `${it.name || '이름 없음'} 불러오기`);
     b.addEventListener('click', () => {
-      dz.hist.push(dz.d.slice());
-      dz.d = cleanDsg(it.dsg).split('').map(c => parseInt(c, 16)); dz.pal = pal.slice(); dz.form = cleanLook({ dform: it.dform }).dform;
+      const k = hat ? 'hat' : 'top';
+      if (dz.k !== k) { dz.k = k; dz.hist = []; } else dz.hist.push(dz.d.slice());
+      dz.d = dsg.split('').map(c => parseInt(c, 16)); dz.pal = pal.slice(); dz.form = itemForm(it);
       $('dz-name').value = it.name || '';
       renderDesigner(); toast(`"${it.name || '이름 없음'}"을 불러왔어요. 입어 보기를 누르면 입어요`);
     });
@@ -1421,7 +1477,7 @@ async function shareItem(it, btn) {
     let code = null;
     for (let i = 0; i < 3 && !code; i++) {
       const c = newCode();
-      try { await store.shareDesign(c, { name: it.name || '이름 없음', dsg: cleanDsg(it.dsg), dpal: cleanLook({ dpal: it.dpal }).dpal, dform: cleanLook({ dform: it.dform }).dform, owner: me.uid, ownerName: mine ? mine.name : '', at: Date.now() }); code = c; }
+      try { await store.shareDesign(c, { name: it.name || '이름 없음', kind: it.kind === 'hat' ? 'hat' : 'top', dsg: itemDsg(it), dpal: itemPal(it), dform: itemForm(it), owner: me.uid, ownerName: mine ? mine.name : '', at: Date.now() }); code = c; }
       catch (e) { if (!(e && e.code === 'permission-denied')) throw e; }   // 같은 코드가 이미 있으면 다시 만들어요
     }
     if (!code) throw { code: 'permission-denied' };
@@ -1439,13 +1495,16 @@ $('dz-import').addEventListener('click', async () => {
   const btn = $('dz-import'); btn.disabled = true;
   try {
     const d = await store.getShared(code);
-    if (!d || !cleanDsg(d.dsg)) { toast('그런 코드가 없어요'); return; }
+    const kind = d && d.kind === 'hat' ? 'hat' : 'top';
+    if (!d || !itemDsg({ ...d, kind })) { toast('그런 코드가 없어요'); return; }
     if (closet.items.length >= CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
-    const item = { id: rid(), name: String(d.name || '받은 디자인').slice(0, 16), dsg: cleanDsg(d.dsg), dpal: cleanLook({ dpal: d.dpal }).dpal, dform: cleanLook({ dform: d.dform }).dform, at: Date.now(), from: code };
+    const src = { ...d, kind };
+    const item = itemOf(kind, itemDsg(src), itemPal(src), itemForm(src), { name: String(d.name || '받은 디자인').slice(0, 16), from: code });
     const items = [item, ...closet.items];
     await store.saveCloset(me.uid, { items, gifts: closet.gifts });
     closet.items = items; $('dz-code').value = ''; renderCloset();
-    dz.hist.push(dz.d.slice()); dz.d = item.dsg.split('').map(c => parseInt(c, 16)); dz.pal = item.dpal.slice(); dz.form = item.dform; renderDesigner();
+    if (dz.k !== kind) { dz.k = kind; dz.hist = []; } else dz.hist.push(dz.d.slice());
+    dz.d = item.dsg.split('').map(c => parseInt(c, 16)); dz.pal = item.dpal.slice(); dz.form = item.dform; renderDesigner();
     toast(`"${item.name}"${d.ownerName ? ` (${d.ownerName} 디자인)` : ''}을 옷장에 넣었어요`);
   } catch (e) { toast(e && e.code === 'permission-denied' ? '코드를 불러올 수 없어요' : saveMsg(e)); }
   finally { btn.disabled = false; }
@@ -1454,10 +1513,10 @@ $('dz-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('dz-imp
 $('dz-store').addEventListener('click', async () => {
   if (!dz || !closet) return;
   const name = $('dz-name').value.trim().slice(0, 16) || `디자인 ${closet.items.length + 1}`;
-  const look = cleanLook(dzLook());
-  if (!/[1-9a-f]/.test(look.dsg)) { toast('먼저 옷을 그려 주세요'); return; }
-  const same = closet.items.find(x => x.name === name);
-  const item = { id: same ? same.id : rid(), name, dsg: look.dsg, dpal: look.dpal, dform: look.dform, at: Date.now() };
+  const cur = dzStr();
+  if (!inked(cur)) { toast(dz.k === 'hat' ? '먼저 모자를 그려 주세요' : '먼저 옷을 그려 주세요'); return; }
+  const same = closet.items.find(x => x.name === name && (x.kind === 'hat') === (dz.k === 'hat'));
+  const item = itemOf(dz.k, cur, dz.pal, dz.form, { id: same ? same.id : rid(), name });
   const items = same ? closet.items.map(x => x === same ? item : x) : [item, ...closet.items];
   if (items.length > CLOSET_MAX) { toast(`옷장에는 ${CLOSET_MAX}벌까지 넣을 수 있어요`); return; }
   try { await store.saveCloset(me.uid, { items, gifts: closet.gifts }); closet.items = items; renderCloset(); toast(same ? `"${name}"을 고쳐 저장했어요` : `"${name}"을 옷장에 넣었어요`); }
@@ -1710,7 +1769,7 @@ function render() {
   const showCreate = member && loaded && (editing || !mine);
   if (showCreate && !draft) {
     pickKey = null;
-    draft = { look: mine ? { ...cleanLook(mine.look) } : randomLook(), name: mine ? mine.name : (me.name || '').split(' ')[0].slice(0, 12) };
+    draft = { look: mine ? { ...cleanLook(mine.look) } : cleanLook(randomLook()), name: mine ? mine.name : (me.name || '').split(' ')[0].slice(0, 12) };
     $('nick').value = draft.name;
   }
   $('p-login').hidden = !!me;
