@@ -450,7 +450,7 @@ window.AZIT_CONFIG = {
     messagingSenderId: "501303754157",
     appId: "1:501303754157:web:04c5b1b587bbdac1e9b524",
   },
-  // 아지트 위치(lat, lng)는 공개 저장소에 두지 않고 Firestore settings/azit 문서에 넣어요 (멤버만 읽을 수 있어요).
+  // 아지트 위치(lat, lng)는 공개 저장소에 두지 않고 Firestore settings/agit 문서에 넣어요 (멤버만 읽을 수 있어요).
   // 그 문서에 radius, exitMargin을 넣으면 아래 값 대신 그 값을 써요.
   azit: {
     name: "우리 아지트",
@@ -469,7 +469,7 @@ const DEMO = !C.firebase || !C.firebase.apiKey || C.firebase.apiKey.startsWith('
 const AZIT = { name: '우리 아지트', lat: null, lng: null, radius: 80, exitMargin: 60, ...(C.azit || {}) };
 let ENTER = AZIT.radius, EXIT = AZIT.radius + AZIT.exitMargin;
 const num = v => typeof v === 'number' && isFinite(v);
-// Firestore settings/azit 에서 받은 위치를 적용해요
+// Firestore settings/agit 에서 받은 위치를 적용해요
 function applyAzit(d) {
   if (!d) return;
   if (num(d.lat) && num(d.lng)) { AZIT.lat = d.lat; AZIT.lng = d.lng; }
@@ -612,7 +612,7 @@ async function firebaseStore() {
     // 멤버 명단: members/{구글 이메일}. 초대 코드가 맞으면 보안 규칙이 본인 등록을 허락해요
     isMember: async email => !!email && (await F.getDoc(F.doc(fs, 'members', email))).exists(),
     join: (email, code) => F.setDoc(F.doc(fs, 'members', email), { code, at: Date.now() }),
-    getAzit: async () => { const d = await F.getDoc(F.doc(fs, 'settings', 'azit')); return d.exists() ? d.data() : null; },
+    getAzit: async () => { const d = await F.getDoc(F.doc(fs, 'settings', 'agit')); return d.exists() ? d.data() : null; },
 
     watchVillagers: (cb, err) => F.onSnapshot(F.collection(fs, 'villagers'), s => cb(list(s).map(d => ({ uid: d.id, ...d }))), err),
     saveVillager: (uid, data) => F.setDoc(F.doc(fs, 'villagers', uid), { ...data, updatedAt: Date.now() }, { merge: true }),

@@ -30,7 +30,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // 아지트 위치: settings/azit 문서 (lat, lng, 선택: radius, exitMargin, name). 멤버만 읽고, 콘솔에서만 바꿔요
+    // 아지트 위치: settings/agit 문서 (lat, lng, 선택: radius, exitMargin, name). 멤버만 읽고, 콘솔에서만 바꿔요
     match /settings/{doc} {
       allow read: if isMember();
       allow write: if false;

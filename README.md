@@ -27,7 +27,7 @@ python3 -m http.server 8000
 2. **Authentication → 로그인 방법**에서 **Google**을 켜요.
 3. **Firestore Database**를 만들고, **규칙** 탭에 `firestore.rules` 내용을 붙여넣고 게시해요.
 4. **프로젝트 설정 → 내 앱 → 웹 앱 추가** 후 나오는 `firebaseConfig` 값을 `index.html`의 `AZIT_CONFIG.firebase`에 넣어요.
-5. **아지트 위치 넣기**: Firestore에서 `settings` 컬렉션 → 문서 ID `azit` → 필드 `lat`(number, 위도), `lng`(number, 경도)를 넣어요. 구글 지도에서 아지트를 길게 누르면 좌표가 나와요. 도착 반경을 바꾸려면 `radius`(number, m)도 넣어요 (기본 80). 위치는 코드에 넣지 않아서 저장소가 공개여도 멤버만 볼 수 있어요.
+5. **아지트 위치 넣기**: Firestore에서 `settings` 컬렉션 → 문서 ID `agit` → 필드 `lat`(number, 위도), `lng`(number, 경도)를 넣어요. 구글 지도에서 아지트를 길게 누르면 좌표가 나와요. 도착 반경을 바꾸려면 `radius`(number, m)도 넣어요 (기본 80). 위치는 코드에 넣지 않아서 저장소가 공개여도 멤버만 볼 수 있어요.
 6. **초대 코드 정하기**: Firestore에서 `config` 컬렉션 → 문서 ID `invite` → 필드 `code`(string)에 초대 코드를 넣어요. 처음 로그인한 친구는 이 코드를 한 번 입력하면 자동으로 `members/{구글 이메일}`에 등록돼요. 코드를 바꾸면 그다음부터 새로 들어오는 사람만 새 코드를 써야 하고, 이미 멤버인 사람은 그대로예요. `members`에 이메일 문서를 직접 추가해도 멤버가 돼요.
 7. 사이트를 배포해요 (GitHub Pages, Firebase Hosting, Netlify 등 아무 정적 호스팅).
 8. **Authentication → 설정 → 승인된 도메인**에 배포한 주소의 도메인을 추가해요. 빠뜨리면 로그인할 때 `auth/unauthorized-domain` 오류가 나요.
@@ -40,7 +40,7 @@ python3 -m http.server 8000
 
 | 컬렉션 / 문서 ID | 내용 | 쓰기 권한 |
 | --- | --- | --- |
-| `settings/azit` | 아지트 위치 (`lat`, `lng`, 선택: `radius`, `exitMargin`) — 멤버만 읽어요 | 콘솔에서만 |
+| `settings/agit` | 아지트 위치 (`lat`, `lng`, 선택: `radius`, `exitMargin`) — 멤버만 읽어요 | 콘솔에서만 |
 | `config/invite` | 초대 코드 (`code`) — 아무도 읽을 수 없어요 | 콘솔에서만 |
 | `members/{이메일}` | 멤버 명단 | 초대 코드가 맞을 때 본인 등록, 또는 콘솔 |
 | `villagers/{uid}` | 이름, 캐릭터 모양, 아지트에 있는지(`here`, `since`, `seen`) | 본인 |
