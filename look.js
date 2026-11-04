@@ -166,44 +166,65 @@
     }
     return inside;
   }
-  // 별무늬 멜빵 원피스: 크림·노랑 줄무늬 긴팔 셔츠 위에 데님 멜빵 원피스, 노란 별 패치, 노란 단추와 박음질, 주머니
+  // 별무늬 멜빵 원피스: 크림·연노랑 줄무늬 긴팔 셔츠(뾰족한 깃, 소매 끝단) 위에 데님 멜빵 원피스.
+  //   어깨끈 박음질과 노란 단추, 가슴판 테두리 박음질과 노란 별, 허리띠, 물 빠진 듯한 데님 얼룩과 가장자리 그림자, 큰 별 몇 개, 밑단 띠
   const STAR_DRESS = { name: '별무늬 멜빵 원피스', kind: 'top', dform: 5,
-    dpal: ['#f7efd2', '#ead27a', '#4f6f92', '#3e5878', '#6f8db0', '#f4cf5a', '#d9b44a', '#2f455e', '#fffaea', '#8aa6c4', '#c9a77c', '#2b2b2b', '#e9dfc2', '#b9c8d8', '#9a9a9a'],
+    dpal: ['#fbf4db', '#efd98d', '#57789b', '#3f5b7c', '#7896b5', '#f5d062', '#dcb246', '#a9bfd6', '#93adc8', '#e3d39f', '#2f4561', '#fffaea', '#4a6a8c', '#c9a77c', '#9a9a9a'],
     dsg: paintParts((p, x, y, n) => {
       const c = Math.abs(x - (n - 1) / 2);
-      const shirt = (xx, yy) => (Math.floor(xx / 3) % 2 ? 2 : 1);            // 세로 줄무늬 셔츠
-      if (p === 'left' || p === 'right') return y >= 27 ? (y === 27 ? 13 : 1) : shirt(x, y);
-      // 데님 바탕 (얼룩 약간)
-      const wash = (xx, yy) => ((xx * 7 + yy * 13) % 23 === 0 || (xx * 5 + yy * 11) % 31 === 0) ? 5 : ((xx + yy * 3) % 17 === 0 ? 4 : 3);
-      const stars = p === 'front' ? [[31.5, 21, 6], [15, 43, 4.6], [48, 39, 3.8], [40, 56, 4.8], [19, 57, 3.4], [53, 55, 3.2]]
-                                  : [[20, 40, 4.6], [44, 46, 5], [31, 57, 3.6], [11, 54, 3.2], [53, 35, 3.2]];
-      if (y >= 30) {                                                       // 치마 부분
-        if (y === 30 || y === 31) return 4;                                // 허리 이음선
-        if (y === 32 && x % 3 === 0) return 6;                             // 노란 박음질
-        for (const [sx, sy, R] of stars) if (inStar(x, y, sx, sy, R)) return 6;
-        if (p === 'front' && y >= 38 && y <= 48 && x >= 25 && x <= 38) {   // 주머니
-          if (y === 38 || x === 25 || x === 38 || y === 48) return 4;
-          if (y === 39 && x % 2) return 7;
-        }
-        return wash(x, y);
+      const shirt = xx => (xx % 3 === 2 ? 2 : 1);                         // 크림 2칸 · 연노랑 1칸 세로 줄무늬
+      if (p === 'left' || p === 'right') {
+        if (y >= 27) return y === 27 ? 10 : 12;                            // 소매 끝단
+        return shirt(x);
       }
-      // 위: 셔츠가 보이고, 가운데 멜빵 가슴판 + 어깨끈
-      const strapL = Math.abs(x - (15 + y * .18)) < 3, strapR = Math.abs(x - (48 - y * .18)) < 3;
+      // 물 빠짐 얼룩 + 가장자리·아래쪽 그림자
+      const denim = (xx, yy, top) => {
+        const w = Math.sin(xx * .31 + yy * .13) * .55 + Math.sin(xx * .12 - yy * .27 + 1.3) * .6 + Math.sin((xx + yy) * .19 + 2.1) * .35;
+        const edge = Math.pow(c / 32, 2) * .9 + Math.max(0, yy - top) / 64 * .35;
+        if (edge > .97) return 11;
+        if (edge > .72 || (w < -1 && edge > .4)) return 4;
+        if (w > 1.05) return 9;
+        if (w > .5) return 5;
+        return (xx * 7 + yy * 5) % 37 === 0 ? 13 : 3;
+      };
+      const star = (sx, sy, R) => inStar(x, y, sx, sy, R) ? (y + .5 > sy + R * .1 ? 7 : 6) : 0;
+      const stitch = (xx, yy) => (xx + yy) % 2 === 0;
       if (p === 'front') {
-        if (y < 6 && c < 9) return (c > 8 - y || y > 4) ? 13 : 9;          // 셔츠 깃
-        if (y >= 10 && c < 12) {                                           // 가슴판
-          if (y === 10 || c > 11) return 4;
-          if (y === 11 && x % 3 === 0) return 7;
-          for (const [sx, sy, R] of stars) if (inStar(x, y, sx, sy, R)) return 6;
-          return wash(x, y);
+        // 셔츠 깃
+        if (y < 8 && c < 10) { const flap = c > 1 && y < 1.4 * (c - 1) + 1 && y < 8 - (c - 1) * .35; if (flap) return (y === 7 || c > 9) ? 10 : 12; }
+        // 치마
+        if (y >= 33) {
+          if (y >= 61) return 4;                                           // 밑단 띠
+          if (y === 60) return stitch(x, y) ? 8 : 4;
+          return star(15, 44, 6.5) || star(49, 51, 5.5) || star(29, 58, 3.8) || denim(x, y, 33);
         }
-        if (strapL || strapR) { if (y >= 8 && y <= 10 && Math.abs(x - (strapL ? 15 + y * .18 : 48 - y * .18)) < 1.6) return 6; return 4; }   // 어깨끈 + 단추
-        return shirt(x, y);
+        if (y >= 30) return y === 31 && stitch(x, y) ? 8 : 4;              // 허리띠 + 박음질
+        // 가슴판
+        if (y >= 14 && c < 12.5) {
+          if (c > 11.5 || y === 14) return 4;
+          if ((c > 10.3 && c <= 11.5) || y === 15) return stitch(x, y) ? 8 : 3;
+          return star(31.5, 22.5, 6.2) || denim(x, y, 14);
+        }
+        // 어깨끈 + 단추
+        for (const sx of [21, 42]) {
+          const d = Math.abs(x + .5 - sx);
+          if (d < 3.5) {
+            if (y >= 12 && y <= 15 && d < 1.6) return y === 12 ? 7 : 6;  // 노란 단추
+            if (d < .6) return stitch(x, y) ? 8 : 3;
+            return d > 2.9 ? 4 : 3;
+          }
+        }
+        return shirt(x);
       }
-      // 뒤: 엑스자로 엇갈린 어깨끈
-      if (y >= 22 && c < 13) return y === 22 ? 4 : wash(x, y);
-      if (Math.abs(x - (18 + y * .62)) < 2.6 || Math.abs(x - (45 - y * .62)) < 2.6) return 4;
-      return shirt(x, y);
+      // 뒤: 엑스자로 엇갈린 어깨끈, 치마
+      if (y >= 33) { if (y >= 61) return 4; if (y === 60) return stitch(x, y) ? 8 : 4; return star(20, 45, 5.5) || star(46, 55, 4.5) || denim(x, y, 33); }
+      if (y >= 30) return y === 31 && stitch(x, y) ? 8 : 4;
+      if (y >= 24 && c < 13) return y === 24 ? 4 : denim(x, y, 24);       // 뒤 허리 패널
+      for (const [x0, k] of [[17, .62], [46, -.62]]) {
+        const d = Math.abs(x + .5 - (x0 + y * k));
+        if (d < 3.2) return d < .6 ? (stitch(x, y) ? 8 : 3) : d > 2.6 ? 4 : 3;
+      }
+      return shirt(x);
     }) };
   // 별 캡모자: 앞은 넓은 크림 앞판에 작은 노란 별과 정수리 단추(옆은 데님), 뒤는 데님에 뒷면 조절 끈, 챙은 노랑·크림 줄무늬
   const STAR_CAP = { name: '별 캡모자', kind: 'hat', hform: 0,
@@ -226,6 +247,6 @@
       return denim(x, y);
     }, HPARTS, HLEN) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
-  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress', ...STAR_DRESS }, { id: 'gift-stargazer-cap-3', ...STAR_CAP }] };
+  const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress-2', ...STAR_DRESS }, { id: 'gift-stargazer-cap-3', ...STAR_CAP }] };
   window.AZIT_LOOK = { HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();
