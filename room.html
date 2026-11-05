@@ -901,6 +901,64 @@ function stripeMat(hex, k = 1) {
   return stripeMats[hex + k] = new THREE.MeshStandardMaterial({ color: '#ffffff', map: t, ...CLOTH(k) });
 }
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .16, depthWrite: false });
+// ---------- 머리카락 ----------
+// 머리를 통통하게 감싸는 껍데기에서 얼굴 자리를 비워요. 이마선(앞머리 끝)은 둥근 덩어리 몇 개로 나뉘고, 모양은 스타일마다 달라요
+// chunk(x, w): 덩어리 가운데에서 1, 덩어리 사이에서 0
+const chunk = (x, w, off = 0) => Math.abs(Math.sin(Math.PI * (x + off) / w));
+const HAIRLINE = {
+  sweep: x => .17 - .07 * x - .06 * chunk(x, .17, .03),           // 옆으로 넘긴 앞머리 (덩어리 5개쯤)
+  blunt: x => .1 - .015 * chunk(x, .12),                          // 일자 앞머리
+  part: x => .16 + .07 * Math.tanh(-x * 9) - .05 * chunk(x, .19, .05),   // 가르마
+  bowl: x => .05 - .015 * chunk(x, .14),                          // 바가지
+  high: x => .3 - .8 * x * x,                                     // 올백·모히칸
+  short: x => .22 - .04 * chunk(x, .15),                          // 숏컷
+};
+const HAIR_KIND = { 3: 'blunt', 8: 'part', 9: 'blunt', 10: 'bowl', 16: 'high', 19: 'short', 23: 'blunt', 24: 'high', 25: 'blunt', 31: 'blunt', 32: 'blunt', 33: 'blunt' };
+const hairShells = new Map();
+const smooth01 = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+// 머리카락 덩어리: 방향(phi)마다 정수리부터 아래 끝(이마선·옆머리 끝·목덜미)까지 한 줄씩 이어 만들어요.
+// 아래 끝이 이마선 곡선을 그대로 따라가서 가장자리가 매끈하고, 끝에는 머리 쪽으로 접히는 두께가 있어요
+function hairShell(kind) {
+  if (hairShells.has(kind)) return hairShells.get(kind);
+  const line = HAIRLINE[kind], NP = 128, NT = 36;
+  const sideEnd = x => -.15 + .055 * chunk(x, .09);                 // 귀를 덮는 옆머리 끝
+  const bottomY = (x, z) => {
+    const w = smooth01(.31, .4, Math.abs(x)), front = smooth01(-.16, .04, z);
+    const yFront = line(x) * (1 - w) + sideEnd(x) * w;
+    return -.3 * (1 - front) + yFront * front;
+  };
+  const radius = (th, thB, phi) => .5 + .05 * Math.pow(Math.cos(th / 2), 6)   // 정수리가 볼록
+    + .022 * Math.pow(th / thB, 3) * Math.max(0, Math.cos(phi));          // 앞머리 끝은 이마 앞으로 살짝 떠요
+  const P = [], C = [], I = [], cols = NT + 2;
+  for (let i = 0; i <= NP; i++) {
+    const phi = -Math.PI + 2 * Math.PI * i / NP, sp = Math.sin(phi), cp = Math.cos(phi);
+    let thB = 1.6;
+    for (let k = 0; k < 10; k++) { const r = .52, x = r * Math.sin(thB) * sp, z = r * Math.sin(thB) * cp; thB = Math.acos(Math.max(-1, Math.min(1, bottomY(x, z) / r))); }
+    const x0 = .52 * Math.sin(thB) * sp, onFace = cp > 0 && Math.abs(x0) < .36;
+    const gapK = onFace ? 1 - chunk(x0, kind === 'sweep' ? .17 : kind === 'part' ? .19 : kind === 'short' ? .15 : .14, kind === 'sweep' ? .03 : kind === 'part' ? .05 : 0) : 0;
+    for (let j = 0; j <= NT; j++) {
+      const t = j / NT, th = t * thB, r = radius(th, thB, phi);
+      P.push(r * Math.sin(th) * sp, r * Math.cos(th) + .01, r * Math.sin(th) * cp);
+      const c = .92 + .1 * Math.pow(Math.cos(th / 2), 8) - .1 * Math.pow(t, 8) - .06 * gapK * Math.pow(t, 5);   // 정수리 밝게, 끝과 덩어리 사이는 살짝 어둡게
+      C.push(c, c, c);
+    }
+    // 끝 두께: 머리 쪽으로 접힌 안쪽 테두리
+    const th = thB * 1.01, r = .455;
+    P.push(r * Math.sin(th) * sp, r * Math.cos(th) + .01, r * Math.sin(th) * cp); C.push(.68, .68, .68);
+  }
+  for (let i = 0; i < NP; i++) for (let j = 0; j < cols - 1; j++) {
+    const a = i * cols + j, b2 = (i + 1) * cols + j;
+    I.push(a, b2, a + 1, a + 1, b2, b2 + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.setIndex(I); g.computeVertexNormals();
+  hairShells.set(kind, g);
+  return g;
+}
+const hairMats = {};
+const hairMat = hex => hairMats[hex] || (hairMats[hex] = new THREE.MeshStandardMaterial({ color: hex, roughness: .72, metalness: 0, vertexColors: true, side: THREE.DoubleSide }));
 const BODY_Y = 1.2, HEAD_S = .9, BODY_X = .8;   // 목 아래: 위아래 1.2배, 좌우·앞뒤 0.8배 (슬림하게)
 const HEAD_Y = 1.04 * BODY_Y + .46 * HEAD_S - .18;   // 몸통 위끝에서 머리가 살짝 겹치게
 const SIT_DY = .44 * (BODY_Y - 1);                    // 다리가 길어진 만큼 앉는 높이를 내려요
@@ -952,7 +1010,7 @@ function makeVillager(look) {
     legMeshes.forEach(m => { m.material = l.bottom === 0 ? mat.pants : mat.skin; });
     shorts.forEach(m => { m.visible = l.bottom === 1; });
     capris.forEach(m => { m.visible = l.bottom === 4; });
-    const hr = M(hx, { roughness: .6 });
+    const hr = M(hx, { roughness: .72 });
     hairG.clear(); accG.clear(); outfitG.clear();
     buildEyes(eyesG, l.eye, mat.skin);
     // 아래옷
@@ -984,8 +1042,9 @@ function makeVillager(look) {
         at(new THREE.Mesh(VG.button, M('#f4bd4f')), sx * .11, .71, .25, outfitG);
       }
     }
-    at(new THREE.Mesh(VG.cap, hr), 0, .03, -.03, hairG).rotation.x = -.32;
-    at(new THREE.Mesh(VG.back, hr), 0, -.02, -.1, hairG).scale.set(1, .95, .9);
+    const hatOn = l.acc === 4 || l.acc === 5 || (l.acc === HAT_ACC && l.hdsg);
+    const shellM = at(new THREE.Mesh(hairShell(HAIR_KIND[l.style] || 'sweep'), hairMat(hx)), 0, 0, -.005, hairG);
+    if (hatOn) shellM.scale.set(.95, .9, .95);   // 모자를 쓰면 정수리가 모자를 뚫지 않게
     if (l.style === 1) for (let i = 0; i < 5; i++) {     // 삐죽
       const a = (i - 2) * .45, sp = at(new THREE.Mesh(VG.spike, hr), Math.sin(a) * .3, .38 + Math.cos(a) * .1, .02, hairG);
       sp.rotation.set(.2, 0, -a);
@@ -1006,9 +1065,7 @@ function makeVillager(look) {
       at(new THREE.Mesh(VG.curl, hr), x, Math.cos(th) * .47 + .02, z, hairG);
     }
     const tieM = M('#f28b82'), flat = (x, y, z, sx, sy, sz, rz = 0) => { const f = at(new THREE.Mesh(VG.back, hr), x, y, z, hairG); f.scale.set(sx, sy, sz); f.rotation.z = rz; return f; };
-    if (l.style === 8) flat(-.1, .22, .31, .55, .2, .26, .45);                                           // 가르마
-    if (l.style === 9) flat(0, .2, .33, .72, .17, .24);                                                  // 일자 앞머리
-    if (l.style === 10) { const b = at(new THREE.Mesh(VG.cap, hr), 0, -.04, 0, hairG); b.scale.set(1.08, 1.18, 1.08); b.rotation.x = -.12; } // 바가지
+    // 가르마(8)·일자 앞머리(9)·바가지(10)는 머리 껍데기의 이마선 모양으로 표현해요
     if (l.style === 11) {                                                                                 // 땋은 머리
       for (let i = 0; i < 4; i++) at(new THREE.Mesh(VG.curl, hr), .3 + i * .02, -.34 - i * .13, -.16 + i * .09, hairG).scale.setScalar(.72);
       at(new THREE.Mesh(VG.tie, tieM), .37, -.86, .14, hairG);
@@ -1039,7 +1096,7 @@ function makeVillager(look) {
       const t = at(new THREE.Mesh(VG.tail, hr), 0, .6, -.34, hairG); t.scale.set(.72, 1.4, .72); t.rotation.x = -.95;
       at(new THREE.Mesh(VG.tie, tieM), 0, .48, -.24, hairG);
     }
-    const bangs = () => flat(0, .2, .33, .72, .17, .24);
+    const bangs = () => {};   // 앞머리는 머리 껍데기의 이마선(일자)으로 표현해요
     const longBack = () => flat(0, -.3, -.13, 1.02, 1.05, .72);
     const bunAt = (x, y, z, sc = 1) => at(new THREE.Mesh(VG.bun, hr), x, y, z, hairG).scale.setScalar(sc);
     if (l.style === 26) bunAt(0, .6, -.1, 1.35);                                                          // 큰 똥머리
@@ -1063,7 +1120,7 @@ function makeVillager(look) {
       flat(0, -.3, -.13, 1.02, 1.05, .72); bangs();
       for (const sx of [-1, 1]) { const lk = at(box(.1, .42, .14, hr, .04), sx * .4, -.12, .2, hairG); lk.rotation.z = sx * .05; }
     }
-    if (l.style === 24) { const b = at(new THREE.Mesh(VG.cap, hr), 0, .05, -.05, hairG); b.rotation.x = -.55; } // 올백
+    // 올백(24)은 머리 껍데기의 높은 이마선으로 표현해요
     if (l.style === 25) { flat(0, -.3, -.13, 1.02, 1.05, .72); bangs(); }                               // 앞머리 긴 머리
     if (l.style === 7) {                                                                                  // 똥머리
       at(new THREE.Mesh(VG.bun, hr), 0, .55, -.1, hairG);
@@ -1109,6 +1166,7 @@ function makeVillager(look) {
       if (H.visor) { const v = at(new THREE.Mesh(H.visor, hatMat(l, 'brim', false, tk)), 0, .04, .44, hg); v.rotation.x = Math.PI / 2 + .12; }
       if (H.pom) at(new THREE.Mesh(VG.pom, M(l.hpal[6])), 0, .62, -.02, hg);
     }
+    hairG.children.forEach(o => { if (o !== shellM) o.position.multiplyScalar(1.07); });   // 볼록해진 머리 겉으로 장식(묶음·땋기 등)을 살짝 밀어내요
     if (l.acc === 4 || l.acc === 5 || (l.acc === HAT_ACC && l.hdsg))   // 모자를 쓰면 정수리 위로 솟은 머리는 숨겨요
       hairG.children.forEach(o => { if (o.position.y > .3) o.visible = false; });
     outfitG.children.forEach(o => { if (o.position.z > .15) o.position.z += .03; });   // 겉감 위로 살짝 띄워요
