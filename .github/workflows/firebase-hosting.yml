@@ -1,0 +1,20 @@
+# 이 브랜치에 푸시하면 Firebase Hosting(https://wiw-agit.web.app)에 자동으로 배포해요.
+# 저장소 Settings → Secrets and variables → Actions 에 FIREBASE_SERVICE_ACCOUNT(서비스 계정 키 JSON)가 있어야 해요.
+name: Firebase Hosting 배포
+
+on:
+  push:
+    branches: [ccr-d33f265e-0utdjj]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: wiiw-9e8dc
+          channelId: live

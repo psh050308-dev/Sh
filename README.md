@@ -37,6 +37,16 @@ python3 -m http.server 8000
 
 저장소 **Settings → Pages**에서 브랜치와 루트(`/`) 폴더를 고르면 `https://<아이디>.github.io/<저장소>/`로 열려요. 그 도메인(`<아이디>.github.io`)을 8번 승인된 도메인에 추가하세요.
 
+### Firebase Hosting (https://wiw-agit.web.app)
+
+`firebase.json`과 `.github/workflows/firebase-hosting.yml`로, 이 브랜치에 푸시하면 자동으로 배포돼요.
+
+1. Firebase 콘솔 → **Hosting** → 시작하기 → **다른 사이트 추가**에서 사이트 ID `wiw-agit`을 만들어요.
+2. Firebase 콘솔 → 프로젝트 설정 → **서비스 계정** → **새 비공개 키 생성**으로 JSON 키를 받아요.
+3. GitHub 저장소 → Settings → **Secrets and variables → Actions** → New repository secret: 이름 `FIREBASE_SERVICE_ACCOUNT`, 값은 JSON 파일 내용 전체.
+4. Authentication → 설정 → 승인된 도메인에 `wiw-agit.web.app`을 추가해요.
+5. GitHub 저장소 → **Actions** 탭에서 "Firebase Hosting 배포"를 실행하거나 아무 커밋이나 푸시하면 배포돼요.
+
 ## 데이터 구조 (Firestore)
 
 | 컬렉션 / 문서 ID | 내용 | 쓰기 권한 |
