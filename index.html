@@ -102,6 +102,7 @@ button:disabled{opacity:.5; cursor:not-allowed}
 .hs-face{width:46px; height:46px; border-radius:50%; overflow:hidden; background:#ead9bd; display:block}
 .hs-face svg{width:100%; height:auto; transform:translateY(-4%) scale(1.45); transform-origin:50% 0}
 .hs-grid.eyes .hs-face svg{transform:translateY(-60%) scale(2.8)}
+.hs-grid.mouths .hs-face svg{transform:translateY(-118%) scale(3.4)}
 .hs-name{font-family:var(--body); font-size:.64rem; line-height:1.15; text-align:center; word-break:keep-all}
 .sw.custom{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); position:relative}
 .sw.custom::after{content:"+"; position:absolute; inset:0; display:grid; place-items:center; font-family:var(--display); font-size:1rem; color:#fff; text-shadow:0 0 3px rgba(0,0,0,.55)}
@@ -587,24 +588,100 @@ const ls = {
 };
 
 // ---------- 캐릭터 (모양 정의는 look.js) ----------
-const { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, cleanHdsg, FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
-const HAIR_TOP = [
-  hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 72 42 Q64 50 48 44 Q30 46 23 64Z" fill="${hr}"/>`,
-  hr => `<path d="M22 62 L25 33 L36 40 L41 19 L52 32 L60 12 L68 32 L79 19 L84 40 L95 33 L98 62 Q90 44 60 42 Q30 44 22 62Z" fill="${hr}"/>`,
-  hr => `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q90 40 60 40 Q34 42 23 64Z" fill="${hr}"/><circle cx="91" cy="40" r="5" fill="#f28b82"/>`,
-  hr => `<path d="M22 72 Q20 22 60 21 Q100 22 98 72 Q96 50 88 44 Q60 52 32 44 Q24 50 22 72Z" fill="${hr}"/>`,
-];
+const { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, cleanHdsg, FORMS, DESIGN_TOP, DN, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, MOUTHS, TOPS, BOTTOMS, ACCS, cleanLook, colorOf, randomLook, shade, lum } = window.AZIT_LOOK;
+// ---------- 머리 2D: 얼굴보다 한 겹 큰 풍성한 머리 덩어리 + 앞머리 모양 + 묶음/뒷머리 ----------
+// 앞머리 끝 점들(오른쪽 → 왼쪽). 점 사이는 아래로 볼록한 덩어리로 이어요. [옆머리 끝 y, 볼록한 정도, 점들]
+const HAIRLINE2D = {
+  sweep: [70, 7, [[96, 60], [91, 38], [80, 33], [68, 40], [55, 47], [42, 52], [31, 56], [24, 68]]],
+  blunt: [76, 6, [[96, 66], [93, 52], [80, 54], [67, 55], [53, 55], [40, 54], [27, 52], [24, 66]]],
+  part: [72, 5, [[96, 63], [90, 46], [77, 35], [60, 27], [43, 35], [30, 46], [24, 63]]],
+  bowl: [58, 6, [[98, 56], [92, 50], [80, 51], [67, 51], [53, 51], [40, 51], [28, 50], [22, 56]]],
+  high: [58, 3, [[97, 56], [87, 35], [74, 28], [60, 26], [46, 28], [33, 35], [23, 56]]],
+  short: [60, 8, [[97, 57], [90, 38], [78, 35], [66, 39], [54, 34], [42, 39], [31, 40], [23, 58]]],
+};
+function hairCap(kind) {
+  const [sy, b, pts] = HAIRLINE2D[kind];
+  let d = `M17 ${sy} C14 32 33 13 60 13 C87 13 106 32 103 ${sy} Q100 ${sy + 4} 96 ${sy - 1} L${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    d += ` Q${((x0 + x1) / 2).toFixed(1)} ${((y0 + y1) / 2 + b).toFixed(1)} ${x1} ${y1}`;
+  }
+  return d + ` L24 ${sy - 1} Q20 ${sy + 4} 17 ${sy}Z`;
+}
+const HAIR_CAPS = Object.fromEntries(Object.keys(HAIRLINE2D).map(k => [k, hairCap(k)]));
+const SPIKY = {
+  spiky: 'M17 64 C14 46 19 36 25 30 L22 18 L35 24 L40 9 L51 20 L60 5 L69 20 L80 9 L85 24 L98 18 L95 30 C101 36 106 46 103 64 Q100 68 96 63 Q92 46 81 41 Q70 47 60 43 Q50 47 39 41 Q28 46 24 63 Q20 68 17 64Z',
+  flare: 'M18 66 L10 50 L21 51 L15 33 L29 37 L29 20 L42 28 L50 11 L60 24 L71 10 L77 27 L91 18 L91 36 L106 34 L99 50 L109 52 L102 66 Q98 70 95 63 Q90 46 76 45 L68 40 L59 48 L49 42 L40 49 Q28 47 25 63 Q21 70 18 66Z',
+};
+// 뒷머리(몸 뒤에 그려요)
+const BACK2D = {
+  bob: 'M17 56 C12 78 15 95 27 100 Q34 103 40 99 Q50 104 60 101 Q70 104 80 99 Q86 103 93 100 C105 95 108 78 103 56Z',
+  long: 'M17 56 C10 88 12 116 22 128 Q30 133 38 128 Q49 134 60 130 Q71 134 82 128 Q90 133 98 128 C108 116 110 88 103 56Z',
+  wave: 'M17 56 C8 70 16 80 10 92 C5 104 16 112 12 122 Q26 136 44 129 Q60 137 76 129 Q94 136 108 122 C104 112 115 104 110 92 C104 80 112 70 103 56Z',
+  hime: 'M18 56 L17 122 Q17 128 23 128 L97 128 Q103 128 103 122 L102 56Z',
+};
 const TIE = '#f28b82';
-const BRAID_PTS = [[86, 86], [89, 96], [90, 106], [90, 116]];
-const BRAID = BRAID_PTS.map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="6"/>`).join('');
-const BRAID_L = BRAID_PTS.map(([x, y]) => `<ellipse cx="${120 - x}" cy="${y}" rx="6.5" ry="6"/>`).join('');
-const BANGS = hr => `<path d="M22 66 Q20 22 60 21 Q100 22 98 66 L94 50 L26 50 Z" fill="${hr}"/>`;
-const LONG = hr => `<path d="M23 60 Q16 104 28 125 Q60 131 92 125 Q104 104 97 60 Z" fill="${hr}"/>`;
-const CURLS = (() => {
-  const o = [];
-  for (let a = 180; a <= 360; a += 20) { const r = a * Math.PI / 180; o.push([60 + Math.cos(r) * 34, 58 + Math.sin(r) * 33]); }
-  return o.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10"/>`).join('');
-})();
+const ball = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}"/>`;
+const tail = (x, y, rx, ry, rot) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})"/>`;
+const braid = (pts, end) => pts.map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="6"/>`).join('') + `<circle cx="${end[0]}" cy="${end[1]}" r="3.5" fill="${TIE}" stroke="none"/>`;
+const BRAID_R = [[94, 82], [96, 92], [97, 102], [97, 112]], BRAID_L = BRAID_R.map(([x, y]) => [120 - x, y]);
+const tieB = (x, y, rx = 7, ry = 2.6) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${TIE}" stroke="none"/>`;
+const tieC = (x, y, r = 3.8) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${TIE}" stroke="none"/>`;
+const ring = (cx, cy, R, r, a0, a1, step) => { let o = ''; for (let a = a0; a <= a1; a += step) { const t = a * Math.PI / 180; o += ball((cx + Math.cos(t) * R).toFixed(1), (cy + Math.sin(t) * R).toFixed(1), r); } return o; };
+// 스타일마다: line 앞머리(위 HAIRLINE2D 또는 SPIKY), back 뒷머리, behind 몸·머리 뒤 덩어리, front 앞에 얹는 것
+const HAIR2D = [
+  { line: 'sweep' },                                                                    // 단정
+  { line: 'spiky' },                                                                    // 삐죽
+  { line: 'sweep', behind: tail(101, 52, 12, 22, 22), front: tieC(97, 37, 4.5) },       // 포니테일
+  { line: 'blunt', back: 'bob' },                                                       // 단발
+  { line: 'sweep', back: 'long' },                                                      // 긴 머리
+  { line: 'sweep', behind: tail(13, 80, 9, 20, 12) + tail(107, 80, 9, 20, -12), front: tieC(18, 64) + tieC(102, 64) },  // 양갈래
+  { line: 'short', front: 'curls' },                                                    // 곱슬
+  { line: 'sweep', behind: ball(60, 8, 13), front: tieB(60, 16) },                      // 똥머리
+  { line: 'part' },                                                                     // 가르마
+  { line: 'blunt' },                                                                    // 일자 앞머리
+  { line: 'bowl' },                                                                     // 바가지
+  { line: 'sweep', front: braid(BRAID_R, [97, 119]) },                                  // 땋은 머리
+  { line: 'sweep', behind: ball(24, 22, 12) + ball(96, 22, 12) },                       // 양쪽 똥머리
+  { line: 'sweep', back: 'long', behind: ball(60, 11, 9), front: tieB(60, 17, 6, 2.4) },  // 반묶음
+  { line: 'sweep', behind: tail(104, 84, 10, 22, -8), front: tieC(101, 64) },           // 옆 포니테일
+  { line: 'sweep', back: 'wave' },                                                      // 웨이브
+  { line: 'high', faint: true, front: 'mohawk' },                                       // 모히칸
+  { line: 'flare' },                                                                    // 뻗친 머리
+  { line: 'sweep', behind: tail(84, 6, 9, 19, 48), front: tieC(73, 16, 4) },            // 높은 포니테일
+  { line: 'short' },                                                                    // 숏컷
+  { line: 'sweep', front: tail(100, 93, 7, 11, -15) + tieC(97, 83, 3.5) },              // 낮은 묶음
+  { line: 'short', behind: 'afro' },                                                    // 아프로
+  { line: 'sweep', front: braid(BRAID_R, [97, 119]) + braid(BRAID_L, [23, 119]) },      // 양갈래 땋기
+  { line: 'blunt', back: 'hime', front: 'locks' },                                      // 히메컷
+  { line: 'high' },                                                                     // 올백
+  { line: 'blunt', back: 'long' },                                                      // 앞머리 긴 머리
+  { line: 'sweep', behind: ball(60, 5, 18), front: tieB(60, 16, 9, 3) },                // 큰 똥머리
+  { line: 'sweep', front: ball(98, 86, 10) + tieC(93, 78, 3.5) },                       // 낮은 똥머리
+  { line: 'sweep', behind: ball(99, 25, 13), front: tieC(92, 33, 3.5) },                // 옆 똥머리
+  { line: 'sweep', back: 'long', behind: ball(60, 9, 10), front: tieB(60, 17, 6, 2.5) },  // 반묶음 똥머리
+  { line: 'sweep', back: 'long', behind: ball(32, 18, 9) + ball(88, 18, 9), front: tieC(37, 24, 3) + tieC(83, 24, 3) },  // 양갈래 반묶음
+  { line: 'blunt', behind: ball(60, 8, 13), front: tieB(60, 16) },                      // 앞머리 똥머리
+  { line: 'blunt', behind: ball(24, 22, 12) + ball(96, 22, 12), front: tieC(31, 28, 3.5) + tieC(89, 28, 3.5) },  // 앞머리 양쪽 똥머리
+  { line: 'blunt', back: 'long', behind: ball(60, 11, 9), front: tieB(60, 17, 6, 2.4) },  // 반묶음 앞머리
+];
+// 머리 그리기: { behind: 몸 뒤, front: 얼굴 위 }
+function hairSVG(l, hr, uid) {
+  const H = HAIR2D[l.style] || HAIR2D[0], dk = shade(hr, -.25);
+  const G = (inner, extra = '') => `<g fill="${hr}" stroke="${dk}" stroke-width="1.3" stroke-linejoin="round"${extra}>${inner}</g>`;
+  let behind = '';
+  if (H.back) behind += `<path d="${BACK2D[H.back]}"/><path d="M30 98 Q32 112 30 122 M90 98 Q88 112 90 122" fill="none" stroke="${dk}" stroke-opacity=".35"/>`;
+  if (H.behind === 'afro') behind += ball(60, 54, 45) + ring(60, 54, 44, 11, 0, 350, 30);
+  else if (H.behind) behind += H.behind;
+  const cap = HAIR_CAPS[H.line] || SPIKY[H.line];
+  let front = `<clipPath id="${uid}f"><circle cx="60" cy="60" r="37"/></clipPath><path d="${cap}" transform="translate(0 3)" fill="#000" opacity=".08" clip-path="url(#${uid}f)"/>`;
+  front += H.faint ? `<path d="${cap}" fill="${hr}" opacity=".35" clip-path="url(#${uid}f)"/>` : G(`<path d="${cap}"/>`);
+  if (H.front === 'curls') front += G(ring(60, 54, 39, 9, 180, 360, 20));
+  else if (H.front === 'mohawk') front += G('<path d="M50 46 C48 30 52 14 54 8 L58 16 L60 4 L63 16 L67 9 C69 16 72 30 70 46 Q60 42 50 46Z"/>');
+  else if (H.front === 'locks') front += G('<rect x="17" y="48" width="12" height="48" rx="5"/><rect x="91" y="48" width="12" height="48" rx="5"/>');
+  else if (H.front) front += G(H.front);
+  return { behind: behind ? G(behind) : '', front };
+}
 // 눈: 왼쪽(x=47)·오른쪽(x=73) 한쪽씩 그려요. sx: -1 왼쪽, 1 오른쪽
 const INK = '#2a1f1a';
 const glint = (x, y, r = 1.5) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/>`;
@@ -628,6 +705,43 @@ const EYE = [
   (x) => `<ellipse cx="${x}" cy="64" rx="3.6" ry="7.6" fill="${INK}"/>` + glint(x + 1.2, 60.5),
   (x) => `<ellipse cx="${x}" cy="65.5" rx="5" ry="3.8" fill="${INK}"/><path d="M${x - 6.2} 61.8 H${x + 6.2}" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`,
   (x) => `<ellipse cx="${x}" cy="64" rx="5.2" ry="6.8" fill="${INK}"/><ellipse cx="${x}" cy="66.5" rx="3.4" ry="3" fill="#6b4a3a"/>` + glint(x + 1.8, 61, 2.4) + glint(x - 1.6, 68, 1),
+  (x) => `<path d="M${x} 69.5 C${x - 9} 63 ${x - 5.5} 56 ${x} 60.5 C${x + 5.5} 56 ${x + 9} 63 ${x} 69.5Z" fill="#e0435a"/>` + glint(x + 2.4, 61.5, 1.3),
+  (x) => `<path d="${starPath(x, 64, 6.8)}" fill="#f4bd4f" stroke="${INK}" stroke-width="1.3" stroke-linejoin="round"/>`,
+  (x) => `<ellipse cx="${x}" cy="64" rx="5" ry="6.6" fill="${INK}"/><ellipse cx="${x}" cy="67.4" rx="3.9" ry="2.4" fill="#8ec9f5"/>` + glint(x + 1.6, 61, 2.3) + glint(x - 1.8, 66.6, 1.1),
+  (x, sx) => `<path d="M${x + sx * 4} 59.5 L${x - sx * 3.5} 64 L${x + sx * 4} 68.5" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  (x) => `<ellipse cx="${x}" cy="64" rx="5" ry="6.2" fill="#9cc55a" stroke="${INK}" stroke-width="1.4"/><ellipse cx="${x}" cy="64" rx="1.4" ry="5" fill="${INK}"/>` + glint(x + 2, 61.5, 1.1),
+  (x, sx, sk) => oval(x, 4.6, 5.8) + `<path d="M${x - 6.5} 57 L${x + 6.5} 57 L${x + 6.5} ${sx < 0 ? 63 : 60} L${x - 6.5} ${sx < 0 ? 60 : 63} Z" fill="${sk}"/><path d="M${x - 6} ${sx < 0 ? 60 : 62.6} L${x + 6} ${sx < 0 ? 62.6 : 60}" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`,
+  (x) => `<path d="M${x} 64 m0 0 a1.2 1.2 0 0 1 2.4 0 a2.6 2.6 0 0 1 -5 0 a3.8 3.8 0 0 1 7.6 0 a5 5 0 0 1 -10 0" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`,
+  (x) => `<path d="M${x - 4} 60 L${x + 4} 68 M${x + 4} 60 L${x - 4} 68" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`,
+  (x) => oval(x) + `<path d="M${x - 5.5} 58 Q${x} 53.8 ${x + 5.5} 58" fill="none" stroke="${INK}" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`,
+  (x, sx) => oval(x) + `<path d="M${x + sx * 3.2} 68.8 L${x + sx * 5.8} 71 M${x + sx * .6} 69.8 L${x + sx * 1.8} 72.4" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>`,
+  (x) => `<ellipse cx="${x}" cy="64" rx="4.8" ry="6.3" fill="${INK}"/><path d="${starPath(x + 1.4, 61.6, 2.6)}" fill="#fff"/>` + glint(x - 1.6, 67, .9),
+  (x) => `<path d="M${x - 4.8} 64.5 H${x + 4.8}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`,
+];
+// 별 모양(꼭짓점 5개)
+function starPath(cx, cy, R) {
+  let d = '';
+  for (let i = 0; i < 10; i++) { const r = i % 2 ? R * .45 : R, t = -Math.PI / 2 + i * Math.PI / 5; d += (i ? 'L' : 'M') + (cx + Math.cos(t) * r).toFixed(2) + ' ' + (cy + Math.sin(t) * r).toFixed(2); }
+  return d + 'Z';
+}
+// 입 (가운데 x=60, y≈79)
+const LIP = '#7a3b2e', ln = d => `<path d="${d}" fill="none" stroke="${LIP}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+const MOUTH = [
+  ln('M55 77 Q60 82 65 77'),
+  `<path d="M53.5 76.5 Q60 88 66.5 76.5 Z" fill="${LIP}" stroke="${LIP}" stroke-width="1.2" stroke-linejoin="round"/><ellipse cx="60" cy="82.2" rx="3.4" ry="2" fill="#f27e8c"/>`,
+  ln('M57.5 78 Q60 80.5 62.5 78'),
+  ln('M53.5 77 Q56.7 81.5 60 77.5 Q63.3 81.5 66.5 77'),
+  `<ellipse cx="60" cy="79" rx="3" ry="3.6" fill="${LIP}"/>`,
+  ln('M55.5 79 H64.5'),
+  ln('M55 81 Q60 76 65 81'),
+  `<ellipse cx="62" cy="81.4" rx="3" ry="3.6" fill="#f27e8c" stroke="${LIP}" stroke-width="1"/>` + ln('M55 77 Q60 82 65 77'),
+  ln('M55 77 Q60 82 65 77') + `<path d="M61.6 79.4 L64 79.2 L62.9 81.8 Z" fill="#fff"/>`,
+  ln('M55 79.5 Q61 81.5 66 75.5'),
+  ln('M58.5 75 Q63.5 77 59.5 79 Q63.5 81 58.5 83'),
+  `<path d="M52.5 76 Q60 89 67.5 76 Z" fill="${LIP}" stroke="${LIP}" stroke-width="1.2" stroke-linejoin="round"/><path d="M54.5 77 H65.5 Q65 79.5 60 79.5 Q55 79.5 54.5 77Z" fill="#fff"/>`,
+  ln('M53 79 q2.3 -2.6 4.7 0 t4.7 0 t4.6 0'),
+  `<ellipse cx="60" cy="80" rx="4.4" ry="5.6" fill="${LIP}"/><ellipse cx="60" cy="82.4" rx="2.6" ry="1.8" fill="#f27e8c"/>`,
+  ln('M56 80.5 L60 76.8 L64 80.5'),
 ];
 let svgN = 0;
 // 비율: 목 아래는 발끝(y=152) 기준으로 위아래 BODY_Y2배, 머리는 HEAD_S2배 (3D 방과 맞춤)
@@ -687,70 +801,7 @@ function villagerSVG(look) {
   const sk = colorOf(l, 'skin'), hr = colorOf(l, 'hair'), sh = colorOf(l, 'shirt'), pa = colorOf(l, 'pants');
   const dk = shade(sh, -.2), legC = l.bottom === 0 ? pa : sk, isD = l.top === DESIGN_TOP && !!l.dsg;
   const armC = l.top === 8 ? '#fffdf6' : l.top === 10 ? sk : sh;
-  const back = [
-    '', '',
-    `<ellipse cx="95" cy="60" rx="12" ry="21" fill="${hr}" transform="rotate(22 95 60)"/>`,
-    `<path d="M22 58 Q19 94 34 97 L86 97 Q101 94 98 58 Z" fill="${hr}"/>`,
-    `<path d="M23 60 Q16 104 28 125 Q60 131 92 125 Q104 104 97 60 Z" fill="${hr}"/>`,
-    `<ellipse cx="20" cy="82" rx="9" ry="20" fill="${hr}" transform="rotate(12 20 82)"/><ellipse cx="100" cy="82" rx="9" ry="20" fill="${hr}" transform="rotate(-12 100 82)"/>`,
-    '',
-    `<circle cx="60" cy="21" r="14" fill="${hr}"/>`,
-    '', '', '',
-    `<g fill="${hr}">${BRAID}</g><circle cx="90" cy="123" r="3.5" fill="${TIE}"/>`,
-    `<circle cx="29" cy="29" r="12" fill="${hr}"/><circle cx="91" cy="29" r="12" fill="${hr}"/>`,
-    `<path d="M23 60 Q18 98 30 108 Q60 113 90 108 Q102 98 97 60 Z" fill="${hr}"/>`,
-    `<ellipse cx="99" cy="82" rx="10" ry="22" fill="${hr}" transform="rotate(-8 99 82)"/>`,
-    `<path d="M24 58 Q13 80 24 92 Q13 105 26 119 Q42 129 60 127 Q78 129 94 119 Q107 105 96 92 Q107 80 96 58 Z" fill="${hr}"/>`,
-    '', '',
-    `<ellipse cx="78" cy="16" rx="9" ry="18" fill="${hr}" transform="rotate(48 78 16)"/>`,
-    '',
-    `<ellipse cx="90" cy="94" rx="7" ry="10" fill="${hr}" transform="rotate(-15 90 94)"/><circle cx="87" cy="86" r="3.5" fill="${TIE}"/>`,
-    `<circle cx="60" cy="52" r="47" fill="${hr}"/>`,
-    `<g fill="${hr}">${BRAID}${BRAID_L}</g><circle cx="90" cy="123" r="3.5" fill="${TIE}"/><circle cx="30" cy="123" r="3.5" fill="${TIE}"/>`,
-    `<path d="M22 58 L22 118 Q22 124 28 124 L92 124 Q98 124 98 118 L98 58 Z" fill="${hr}"/>`,
-    '',
-    LONG(hr),
-    `<circle cx="60" cy="17" r="19" fill="${hr}"/>`,
-    `<circle cx="88" cy="92" r="10" fill="${hr}"/>`,
-    `<circle cx="93" cy="31" r="13" fill="${hr}"/>`,
-    LONG(hr) + `<circle cx="60" cy="22" r="10" fill="${hr}"/>`,
-    LONG(hr) + `<circle cx="35" cy="27" r="9" fill="${hr}"/><circle cx="85" cy="27" r="9" fill="${hr}"/>`,
-    `<circle cx="60" cy="21" r="14" fill="${hr}"/>`,
-    `<circle cx="29" cy="29" r="12" fill="${hr}"/><circle cx="91" cy="29" r="12" fill="${hr}"/>`,
-    `<path d="M23 60 Q18 98 30 108 Q60 113 90 108 Q102 98 97 60 Z" fill="${hr}"/>`,
-  ][l.style];
-  const top = [
-    HAIR_TOP[0](hr), HAIR_TOP[1](hr), HAIR_TOP[2](hr), HAIR_TOP[3](hr), HAIR_TOP[0](hr),
-    HAIR_TOP[0](hr) + `<circle cx="26" cy="64" r="4" fill="#f28b82"/><circle cx="94" cy="64" r="4" fill="#f28b82"/>`,
-    `<g fill="${hr}">${CURLS}</g>` + HAIR_TOP[0](hr),
-    HAIR_TOP[0](hr) + `<ellipse cx="60" cy="33" rx="8" ry="3" fill="#f28b82"/>`,
-    `<path d="M23 68 Q20 22 60 21 Q99 22 97 60 Q93 42 74 36 Q60 52 32 52 Q26 58 23 68Z" fill="${hr}"/>`,
-    `<path d="M22 66 Q20 22 60 21 Q100 22 98 66 L94 50 L26 50 Z" fill="${hr}"/>`,
-    `<path d="M20 72 Q17 17 60 17 Q103 17 100 72 L97 55 Q60 59 23 55 Z" fill="${hr}"/>`,
-    HAIR_TOP[0](hr),
-    HAIR_TOP[0](hr) + `<circle cx="38" cy="36" r="3.5" fill="${TIE}"/><circle cx="82" cy="36" r="3.5" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="60" cy="25" r="8" fill="${hr}"/><ellipse cx="60" cy="32" rx="6" ry="2.6" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="94" cy="62" r="4" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr),
-    `<path d="M23 64 Q22 22 60 21 Q98 22 97 64 Q92 46 60 42 Q28 46 23 64Z" fill="${hr}" opacity=".45"/><path d="M50 45 L51 15 L57 25 L60 7 L63 25 L69 15 L70 45 Q60 41 50 45Z" fill="${hr}"/>`,
-    `<path d="M21 64 L17 46 L26 50 L23 30 L34 38 L37 20 L48 30 L56 13 L62 28 L72 15 L76 32 L88 21 L88 40 L101 37 L97 62 Q88 44 72 46 L66 40 L58 48 L48 42 L40 50 Q30 48 21 64Z" fill="${hr}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="68" cy="25" r="4" fill="${TIE}"/>`,
-    `<path d="M25 58 Q24 26 60 25 Q96 26 95 58 Q90 38 60 36 Q30 38 25 58Z" fill="${hr}"/>`,
-    HAIR_TOP[0](hr),
-    `<g fill="${hr}">${CURLS}</g>` + HAIR_TOP[0](hr),
-    HAIR_TOP[0](hr),
-    BANGS(hr) + `<g fill="${hr}"><rect x="21" y="46" width="11" height="46" rx="4"/><rect x="88" y="46" width="11" height="46" rx="4"/></g>`,
-    `<path d="M24 56 Q22 19 60 18 Q98 19 96 56 Q92 30 60 28 Q28 30 24 56Z" fill="${hr}"/>`,
-    BANGS(hr),
-    HAIR_TOP[0](hr) + `<ellipse cx="60" cy="34" rx="9" ry="3" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="84" cy="85" r="3.5" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="86" cy="40" r="3.5" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<ellipse cx="60" cy="31" rx="6" ry="2.5" fill="${TIE}"/>`,
-    HAIR_TOP[0](hr) + `<circle cx="40" cy="34" r="3" fill="${TIE}"/><circle cx="80" cy="34" r="3" fill="${TIE}"/>`,
-    BANGS(hr) + `<ellipse cx="60" cy="33" rx="8" ry="3" fill="${TIE}"/>`,
-    BANGS(hr) + `<circle cx="38" cy="36" r="3.5" fill="${TIE}"/><circle cx="82" cy="36" r="3.5" fill="${TIE}"/>`,
-    BANGS(hr) + `<circle cx="60" cy="24" r="8" fill="${hr}"/><ellipse cx="60" cy="31" rx="6" ry="2.6" fill="${TIE}"/>`,
-  ][l.style];
+  const hair = hairSVG(l, hr, uid);
   const lower = l.bottom === 1 ? `<rect x="43" y="113" width="16" height="16" rx="5" fill="${pa}"/><rect x="61" y="113" width="16" height="16" rx="5" fill="${pa}"/>`
     : l.bottom === 2 ? `<path d="M40 111 H80 L89 135 Q60 141 31 135 Z" fill="${pa}"/>`
     : l.bottom === 3 ? `<path d="M40 111 H80 L92 143 Q60 149 28 143 Z" fill="${pa}"/>`
@@ -784,6 +835,7 @@ function villagerSVG(look) {
   ][l.acc] || (l.acc === HAT_ACC && l.hdsg ? hatSVG(l, uid) : '');
   return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <ellipse cx="60" cy="152" rx="26" ry="5" fill="rgba(60,40,20,.18)"/>
+${hair.behind ? `<g transform="translate(60 ${HEAD_CY}) scale(${HEAD_S2}) translate(-60 -60)">${hair.behind}</g>` : ''}
 <g transform="translate(60 152) scale(${BODY_X2} ${BODY_Y2}) translate(-60 -152)">
 <rect x="45" y="116" width="13" height="28" rx="6" fill="${legC}"/><rect x="62" y="116" width="13" height="28" rx="6" fill="${legC}"/>
 <ellipse cx="51" cy="146" rx="9" ry="5" fill="#3d3530"/><ellipse cx="69" cy="146" rx="9" ry="5" fill="#3d3530"/>
@@ -798,12 +850,11 @@ ${isD && (l.dform === 2 || l.dform === 3 || l.dform === 5) ? '' : lower}${deco}
 ${clothShade(uid, isD ? formTorso(l)[0] : TORSO, isD ? (l.dlen && FORM2D[l.dform].long ? 143 : [128, 128, 130, 145, 128, 130][l.dform]) : 128, TEX_K[l.tex])}
 </g>
 <g transform="translate(60 ${HEAD_CY}) scale(${HEAD_S2}) translate(-60 -60)">
-${back}
 <circle cx="60" cy="60" r="37" fill="${sk}"/>
-${top}
-${EYE[l.eye](47, -1, sk)}${EYE[l.eye](73, 1, sk)}
 <ellipse cx="37" cy="75" rx="6" ry="3.6" fill="#ff9e9e" opacity=".7"/><ellipse cx="83" cy="75" rx="6" ry="3.6" fill="#ff9e9e" opacity=".7"/>
-<path d="M55 77 Q60 82 65 77" fill="none" stroke="#7a3b2e" stroke-width="2.2" stroke-linecap="round"/>
+${MOUTH[l.mouth] || MOUTH[0]}
+${hair.front}
+${EYE[l.eye](47, -1, sk)}${EYE[l.eye](73, 1, sk)}
 ${acc}
 </g>
 </svg>`;
@@ -1134,6 +1185,7 @@ function renderCreator() {
     wrap.append(el('p', 'opt-label', label), grid); opts.append(wrap);
   };
   thumbs('눈', 'eye', EYES, 'eyes');
+  thumbs('입', 'mouth', MOUTHS, 'mouths');
   thumbs('머리 모양', 'style', STYLES);
   colors('머리 색', 'hair');
   chips('윗옷', 'top', TOPS);

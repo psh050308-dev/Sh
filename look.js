@@ -11,7 +11,9 @@
     '가르마', '일자 앞머리', '바가지', '땋은 머리', '양쪽 똥머리', '반묶음', '옆 포니테일', '웨이브',
     '모히칸', '뻗친 머리', '높은 포니테일', '숏컷', '낮은 묶음', '아프로', '양갈래 땋기', '히메컷', '올백', '앞머리 긴 머리',
     '큰 똥머리', '낮은 똥머리', '옆 똥머리', '반묶음 똥머리', '양갈래 반묶음', '앞머리 똥머리', '앞머리 양쪽 똥머리', '반묶음 앞머리'];
-  const EYES = ['기본', '동글', '속눈썹', '졸린 눈', '웃는 눈', '감은 눈', '반짝', '점 눈', '작은 눈동자', '옆 보기', '윙크', '진한 눈썹', '화장 눈', '길쭉 눈', '무심한 눈', '초롱 눈'];
+  const EYES = ['기본', '동글', '속눈썹', '졸린 눈', '웃는 눈', '감은 눈', '반짝', '점 눈', '작은 눈동자', '옆 보기', '윙크', '진한 눈썹', '화장 눈', '길쭉 눈', '무심한 눈', '초롱 눈',
+    '하트 눈', '별 눈', '글썽 눈', '질끈 눈', '고양이 눈', '째려보는 눈', '빙글빙글', '엑스 눈', '쌍꺼풀', '아래 속눈썹', '별빛 눈', '일자 눈'];
+  const MOUTHS = ['기본', '활짝', '작은 입', '고양이 입', '오', '일자', '시무룩', '메롱', '덧니', '히죽', '뽀뽀', '헤헤', '물결', '깜짝', 'ㅅ 입'];
   const TOPS = ['티셔츠', '후드티', '셔츠', '줄무늬', '멜빵', '니트', '체크', '하트 맨투맨', '조끼', '넥타이', '나시', '내 디자인'];
   const DESIGN_TOP = TOPS.length - 1;
   // 내 디자인 옷 형태
@@ -42,7 +44,7 @@
   const COLOR_KEYS = ['skin', 'hair', 'shirt', 'pants'];
   const LIMIT = {
     skin: PAL.skin.length, hair: PAL.hair.length, style: STYLES.length, shirt: PAL.shirt.length,
-    pants: PAL.pants.length, top: TOPS.length, bottom: BOTTOMS.length, acc: ACCS.length, eye: EYES.length,
+    pants: PAL.pants.length, top: TOPS.length, bottom: BOTTOMS.length, acc: ACCS.length, eye: EYES.length, mouth: MOUTHS.length,
   };
   const HEX = /^#[0-9a-f]{6}$/;
 
@@ -254,5 +256,5 @@
     }, HPARTS, HLEN) };
   // 특정 멤버 옷장에만 한 번 넣어 주는 디자인 (이메일 → 디자인 목록)
   const GIFTS = { 'psh050308@gmail.com': [{ id: 'gift-robe-5', kind: 'top', ...ROBE }, { id: 'gift-stargazer-dress-2', ...STAR_DRESS }, { id: 'gift-stargazer-cap-3', ...STAR_CAP }] };
-  window.AZIT_LOOK = { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
+  window.AZIT_LOOK = { TOP_FORM, DRESS_FORMS, DLENS, HAT_ACC, TEXS, TEX_K, HFORMS, HPARTS, HLEN, HPAL, cleanHdsg, cleanPal, FORMS, DESIGN_TOP, DN, DPAL, PARTS, DLEN, GIFTS, cleanDsg, designCanvas, PAL, STYLES, EYES, MOUTHS, TOPS, BOTTOMS, ACCS, COLOR_KEYS, LIMIT, cleanLook, colorOf, randomLook, shade, lum };
 })();
